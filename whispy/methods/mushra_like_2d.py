@@ -33,14 +33,14 @@ class MushraLike2D(QMainWindow):
         self,
         task: Optional[str] = "Rate the\n**Quality**\n",
         description: Optional[str] = "The overall quality",
-        values: Optional[List[float]] = [0, .25, .5, 1],
+        values: Optional[List[float]] = [0, .25, .5, .75, 1],
         labels: Optional[List[Optional[str]]] = \
-            ['identical', None, None, 'very different'],
+            ['identical', None, None, None, 'very different'],
         neutral_value: float = 0,
         mushra_like_2d: Optional[Dict] = None,
         # get rid of later
         reference: bool = True,
-        num_buttons: int = 15,
+        num_buttons: int = 6,
     ) -> None:
 
         super().__init__()
@@ -286,6 +286,7 @@ class _RatingArea(QGraphicsView):
         button_fontsize = mushra_like_2d["button_fontsize"]
         button_spacing = mushra_like_2d["button_spacing"]
         rating_area_background_color = mushra_like_2d["rating_area_background_color"]
+        window_background_color = mushra_like_2d["window_background_color"]
         edge_color = mushra_like_2d["edge_color"]
         button_color_initial = mushra_like_2d["button_color_initial"]
         button_color_clicked = mushra_like_2d["button_color_clicked"]
@@ -299,6 +300,7 @@ class _RatingArea(QGraphicsView):
         self._button_fontsize = max(1, int(button_fontsize))
         self._button_spacing = max(0.0, float(button_spacing))
         self._rating_area_background_color = rating_area_background_color
+        self._window_background_color = window_background_color
         self._edge_color = edge_color
         self._button_color_initial = button_color_initial
         self._button_color_clicked = button_color_clicked
@@ -319,7 +321,6 @@ class _RatingArea(QGraphicsView):
             | QPainter.RenderHint.SmoothPixmapTransform
         )
         self.setFrameShape(QGraphicsView.Shape.NoFrame)
-        self.setBackgroundBrush(QColor(self._rating_area_background_color))
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
@@ -335,8 +336,18 @@ class _RatingArea(QGraphicsView):
         self._autoplay_timer.setSingleShot(True)
         self._autoplay_timer.timeout.connect(self._on_autoplay_timer_timeout)
 
+        self._button_area_width: float = 0.0
         self._sync_scene_to_viewport()
         self._build_tiles()
+
+    def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
+        painter.fillRect(rect, QColor(self._window_background_color))
+        scene_rect = self._scene.sceneRect()
+        left, right = self._line_anchor_domain(scene_rect.width())
+        rating_rect = QRectF(left, scene_rect.top(), right - left, scene_rect.height())
+        clipped = rating_rect.intersected(rect)
+        if not clipped.isEmpty():
+            painter.fillRect(clipped, QColor(self._rating_area_background_color))
 
     def resizeEvent(self, event) -> None:
         relative_x: Dict[str, float] = {}
@@ -440,6 +451,16 @@ class _RatingArea(QGraphicsView):
         if name != self._neutral_tile_name:
             self._user_positioned_tiles = True
 
+            tile = self._tiles.get(name)
+            if tile is not None:
+                rect = self._scene.sceneRect()
+                left, _ = self._line_anchor_domain(rect.width())
+                min_x = left - self._button_size / 2
+                tile._min_x = min_x
+                if tile.x() < min_x:
+                    tile.setX(min_x)
+                pos = tile.scenePos()
+
         if self._active_tile_name == name:
             self._set_active_tile(None, allow_reference_fallback=False)
 
@@ -514,11 +535,21 @@ class _RatingArea(QGraphicsView):
         self._active_tile_name = target_name
         self._activated_once.add(target_name)
 
+    def _update_button_area_width(self) -> None:
+        """Recompute the width reserved for the button staging columns."""
+        rect = self._scene.sceneRect()
+        step = self._button_size + self._button_spacing
+        max_y = rect.height() - self._button_size
+        rows_per_column = max(1, int(max(0.0, max_y) / step) + 1)
+        num_columns = -(-self._num_buttons // rows_per_column)  # ceil division
+        self._button_area_width = num_columns * step
+
     def _sync_scene_to_viewport(self) -> None:
         viewport_size = self.viewport().size()
         width = max(1.0, float(viewport_size.width()))
         height = max(1.0, float(viewport_size.height()))
         self._scene.setSceneRect(0, 0, width, height)
+        self._update_button_area_width()
         self._draw_value_lines()
 
     def _normalize_values(self, values: Optional[List[float]]) -> List[float]:
@@ -570,7 +601,7 @@ class _RatingArea(QGraphicsView):
         ]
 
     def _line_anchor_domain(self, area_width: float) -> tuple[float, float]:
-        left = self._button_size / 2
+        left = self._button_area_width + self._button_size / 2
         right = max(left, area_width - self._button_size / 2)
         return left, right
 
@@ -659,48 +690,17 @@ class _RatingArea(QGraphicsView):
 
     def _default_specs(self, count: int) -> List[_DraggableTileSpec]:
         rect = self._scene.sceneRect()
-        half_size = self._button_size / 2
         step = self._button_size + self._button_spacing
-        max_x = rect.width() - self._button_size
         max_y = rect.height() - self._button_size
-
-        # Initial column is anchored at value-space x = values[0].
-        base_center_x = self._value_to_center_x(self._values[0], rect.width())
-        base_x = base_center_x - half_size
-
-        # Precompute the reference tile's top-left position so numbered buttons
-        # can avoid it. R is placed at the horizontal position of neutral_value
-        # and centred vertically.
-        if self._reference:
-            r_center_x = self._value_to_center_x(self._neutral_value, rect.width())
-            r_x = r_center_x - half_size
-            r_y = rect.height() / 2 - half_size
-        else:
-            r_x = r_y = None
-
-        def _overlaps_reference(x: float, y: float) -> bool:
-            if r_x is None:
-                return False
-            return abs(x - r_x) < self._button_size and abs(y - r_y) < self._button_size
+        rows_per_column = max(1, int(max(0.0, max_y) / step) + 1)
 
         specs: List[_DraggableTileSpec] = []
-        current_column = 0
-        current_y = 0.0
-
         for idx in range(count):
-            # Advance past any slot that would overlap the reference tile.
-            while True:
-                if current_y > max_y:
-                    current_column += 1
-                    current_y = 0.0
-                x = min(max(base_x + current_column * step, 0.0), max_x)
-                y = min(max(current_y, 0.0), max_y)
-                if not _overlaps_reference(x, y):
-                    break
-                current_y += step
-
+            col = idx // rows_per_column
+            row = idx % rows_per_column
+            x = col * step
+            y = row * step
             specs.append(_DraggableTileSpec(name=str(idx + 1), x=x, y=y))
-            current_y += step
         return specs
 
 
@@ -803,6 +803,7 @@ class _DraggableTile(QGraphicsObject):
         self._is_active = False
         self._drag_offset = QPointF(0, 0)
         self._moved_since_press = False
+        self._min_x: float = 0.0
 
         self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton)
         self.setFlag(QGraphicsObject.GraphicsItemFlag.ItemIsFocusable, True)
@@ -893,7 +894,7 @@ class _DraggableTile(QGraphicsObject):
         max_x = bounds.right() - self._rect.width()
         max_y = bounds.bottom() - self._rect.height()
 
-        clamped_x = min(max(new_pos.x(), bounds.left()), max_x)
+        clamped_x = min(max(new_pos.x(), max(bounds.left(), self._min_x)), max_x)
         clamped_y = min(max(new_pos.y(), bounds.top()), max_y)
         self.setPos(clamped_x, clamped_y)
 
