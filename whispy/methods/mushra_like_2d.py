@@ -5,7 +5,6 @@ from whispy.utils import read_config
 
 import os
 from dataclasses import dataclass
-import string
 from typing import Dict, List, Optional
 
 from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer, pyqtSignal
@@ -108,7 +107,7 @@ class MushraLike2D(QMainWindow):
             print("Stop clicked")
 
     def _on_continue_clicked(self) -> None:
-        if self.drag_area.all_buttons_were_active():
+        if self.drag_area.view.all_tiles_activated_once():
             self.drag_area.view.deactivate_active_button()
             self.close()
             return
@@ -168,7 +167,7 @@ class _MainWindow(QWidget):
         task_row.setContentsMargins(0, 0, 0, 0)
         task_row.setSpacing(8)
 
-        self.task_label = QLabel(self._format_task_markdown(task), self)
+        self.task_label = QLabel(task.replace("\n", "  \n"), self)
         self.task_label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
         self.task_label.setWordWrap(True)
         self.task_label.setTextFormat(Qt.TextFormat.MarkdownText)
@@ -246,17 +245,9 @@ class _MainWindow(QWidget):
         self._info_window.raise_()
         self._info_window.activateWindow()
 
-    def all_buttons_were_active(self) -> bool:
-        return self.view.all_tiles_activated_once()
-
     def _on_stop_button_clicked(self) -> None:
         self.view.deactivate_active_button()
         self.stopClicked.emit()
-
-    @staticmethod
-    def _format_task_markdown(task: str) -> str:
-        # Markdown requires hard-break markers for single-line breaks.
-        return task.replace("\n", "  \n")
 
     @staticmethod
     def _setup_control_button(button: QPushButton, button_fontsize: int) -> None:
@@ -379,7 +370,7 @@ class _RatingArea(QGraphicsView):
             line.setZValue(0)
             self._lane_lines.append(line)
 
-        numeric_labels = [self._format_numeric_label(v) for v in self._values]
+        numeric_labels = [f"{v:g}" for v in self._values]
         self.lineLayoutChanged.emit(positions, self._labels, numeric_labels)
 
     def _build_tiles(self) -> None:
@@ -560,10 +551,6 @@ class _RatingArea(QGraphicsView):
             normalized_labels.append(str(item))
         return normalized_labels
 
-    @staticmethod
-    def _format_numeric_label(value: float) -> str:
-        return f"{value:g}"
-
     def _scaled_line_positions(self, area_width: float) -> List[float]:
         left, right = self._line_anchor_domain(area_width)
 
@@ -693,16 +680,9 @@ class _RatingArea(QGraphicsView):
             x = base_x + current_column * step
             x = min(max(x, 0.0), max_x)
             y = min(max(current_y, 0.0), max_y)
-            specs.append(_DraggableTileSpec(name=self._label_for_index(idx), x=x, y=y))
+            specs.append(_DraggableTileSpec(name=str(idx + 1), x=x, y=y))
             current_y += step
         return specs
-
-    @staticmethod
-    def _label_for_index(index: int) -> str:
-        alphabet = string.ascii_uppercase
-        if index < len(alphabet):
-            return alphabet[index]
-        return f"B{index + 1}"
 
 
 class _RatingAreaLabels(QWidget):
