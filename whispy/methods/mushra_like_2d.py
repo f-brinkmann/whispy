@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
 # Directory containing this file.
 # Required for loading the default configs
 FILEPATH = os.path.dirname(os.path.abspath(__file__))
@@ -43,7 +44,7 @@ class MushraLike2D(QMainWindow):
         labels: Optional[List[Optional[str]]] = \
             ['identical', None, None, None, 'very different'],
         neutral_value: float = 0,
-        mushra_like_2d: Optional[Dict] = None,
+        mushra_like_2d: Optional[str] = None,
         # get rid of later
         reference: bool = True,
         num_buttons: int = 6,
@@ -69,9 +70,10 @@ class MushraLike2D(QMainWindow):
 
         # load config file
         if mushra_like_2d is None:
-            mushra_like_2d = read_config(os.path.join(
-                FILEPATH, '..', '..', 'configs', 'mushra_like_2d.yml'
-            ))
+            mushra_like_2d = os.path.join(
+                FILEPATH, '..', '..', 'configs', 'mushra_like_2d.yml')
+
+        mushra_like_2d = read_config(mushra_like_2d)
 
         # set global parameters
         self._verbose = bool(mushra_like_2d["verbose"])
