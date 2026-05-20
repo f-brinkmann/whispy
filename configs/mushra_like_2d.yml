@@ -1,4 +1,4 @@
-# Window size in pixels
+# Window size. Either [pixels_x, pixels_y] or "fullscreen"
 window_size: [1100, 550]
 
 # Rating area size.

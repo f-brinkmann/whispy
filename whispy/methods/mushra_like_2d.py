@@ -76,11 +76,20 @@ class MushraLike2D(QMainWindow):
         # set global parameters
         self._verbose = bool(mushra_like_2d["verbose"])
 
+        # set window size
         window_size = mushra_like_2d["window_size"]
-        if not isinstance(window_size, list) or len(window_size) != 2:
-            raise ValueError("window_size must be a (width, height) tuple")
+        fullscreen = isinstance(window_size, str) and \
+            window_size.strip().lower() == "fullscreen"
 
-        self.resize(int(window_size[0]), int(window_size[1]))
+        if fullscreen:
+            geo = QApplication.primaryScreen().availableGeometry()
+            # Shallow-copy the config so the caller's dict is not mutated.
+            mushra_like_2d = dict(mushra_like_2d)
+            mushra_like_2d["window_size"] = [geo.width(), geo.height()]
+        else:
+            self.resize(int(mushra_like_2d["window_size"][0]),
+                        int(mushra_like_2d["window_size"][1]))
+
         self._continue_info_window: Optional[InfoWindow] = None
 
         container = QWidget(self)
@@ -110,7 +119,10 @@ class MushraLike2D(QMainWindow):
         self.drag_area.tileReleased.connect(self._on_tile_released)
         self.drag_area.tileClicked.connect(self._on_tile_clicked)
         self.drag_area.stopClicked.connect(self._on_stop_clicked)
-        self.show()
+        if fullscreen:
+            self.showFullScreen()
+        else:
+            self.show()
         self.drag_area.continueClicked.connect(self._on_continue_clicked)
 
     def _on_tile_pressed(self, tile_name: str, pos: QPointF) -> None:
@@ -187,7 +199,8 @@ class _MainWindow(QWidget):
         layout.setSpacing(0)
         layout.addStretch(1)
 
-        task_row = QHBoxLayout()
+        task_row_widget = QWidget(self)
+        task_row = QHBoxLayout(task_row_widget)
         task_row.setContentsMargins(0, 0, 0, 0)
         task_row.setSpacing(8)
 
@@ -212,7 +225,7 @@ class _MainWindow(QWidget):
         task_row.addWidget(self._left_info_placeholder, 0, Qt.AlignmentFlag.AlignTop)
         task_row.addWidget(self.task_label, 1)
         task_row.addWidget(self.info_button, 0, Qt.AlignmentFlag.AlignTop)
-        layout.addLayout(task_row)
+        layout.addWidget(task_row_widget, alignment=Qt.AlignmentFlag.AlignHCenter)
         if task_spacing > 0:
             layout.addSpacing(task_spacing)
 
@@ -234,11 +247,13 @@ class _MainWindow(QWidget):
         )
         layout.addWidget(self.view, alignment=Qt.AlignmentFlag.AlignHCenter)
 
+        task_row_widget.setFixedWidth(self.view.minimumWidth())
         self.labels_row.setFixedWidth(self.view.minimumWidth())
         self.view.lineLayoutChanged.connect(self.labels_row.set_layout)
         self.view._draw_value_lines()
 
-        controls_layout = QHBoxLayout()
+        controls_widget = QWidget(self)
+        controls_layout = QHBoxLayout(controls_widget)
         controls_layout.setContentsMargins(0, 8, 0, 0)
         controls_layout.setSpacing(8)
         controls_layout.addStretch(1)
@@ -254,7 +269,8 @@ class _MainWindow(QWidget):
 
         controls_layout.addWidget(self.stop_button)
         controls_layout.addWidget(self.continue_button)
-        layout.addLayout(controls_layout)
+        controls_widget.setFixedWidth(self.view.minimumWidth())
+        layout.addWidget(controls_widget, alignment=Qt.AlignmentFlag.AlignHCenter)
         layout.addStretch(1)
 
         self.view.tilePressed.connect(self.tilePressed)
