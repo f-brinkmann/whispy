@@ -14,7 +14,7 @@ difference:
   values: [0, .25, .5, .75, 1]
   neutral_value: 0
 
-coloration:
+coloration_bright_dark:
   task: |
     Rate the
     **Tone colour bright-dark**
