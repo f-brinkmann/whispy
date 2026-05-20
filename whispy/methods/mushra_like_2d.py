@@ -123,10 +123,15 @@ class MushraLike2D(QMainWindow):
         self.drag_area.tileReleased.connect(self._on_tile_released)
         self.drag_area.tileClicked.connect(self._on_tile_clicked)
         self.drag_area.stopClicked.connect(self._on_stop_clicked)
+
+        # show window in front of all other windows
         if fullscreen:
             self.showFullScreen()
         else:
             self.show()
+        self.raise_()
+        self.activateWindow()
+
         self.drag_area.continueClicked.connect(self._on_continue_clicked)
         # Block code execution outside this class until the window is closed
         if block_until_closed:
@@ -161,10 +166,8 @@ class MushraLike2D(QMainWindow):
             ),
             fontsize=self.drag_area._fontsize,
             fontcolor=self.drag_area._fontcolor,
+            block_until_closed=False,
         )
-        self._continue_info_window.show()
-        self._continue_info_window.raise_()
-        self._continue_info_window.activateWindow()
 
     def get_values(self) -> Dict[str, Dict[str, float | bool]]:
         return self.drag_area.view.get_values()
@@ -306,10 +309,8 @@ class _MainWindow(QWidget):
             info_text=self._description,
             fontsize=self._fontsize,
             fontcolor=self._fontcolor,
+            block_until_closed=False,
         )
-        self._info_window.show()
-        self._info_window.raise_()
-        self._info_window.activateWindow()
 
     def _on_stop_button_clicked(self) -> None:
         self.view.deactivate_active_button()
