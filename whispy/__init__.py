@@ -1,11 +1,13 @@
-from . import methods
-from . import interfaces
+from . import experiments
 from . import gui
+from . import interfaces
+from . import methods
 from . import utils
 
 __all__ = [
-    'methods',
-    'interfaces',
+    'experiments',
     'gui',
+    'interfaces',
+    'methods',
     'utils',
 ]

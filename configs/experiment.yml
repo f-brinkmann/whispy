@@ -1,18 +1,36 @@
 # Define the experiment
-# - each 'screen' defines one rating screen
+# - each 'block' is a sub-element of an experiment. Blocks can be used to
+#   structure an experiment
+# - each 'section' is a sub-element of a block. Sections can be used to
+#   structure blocks
+#
 # - 'attribute' must match attributes.yml
 # - 'reference' and 'test' must match the stimuli.yml
+- block:
+  - section:
+      attribute: difference
+      reference: 1
+      test:
+        - 2
+        - 3
+  - section:
+      attribute: difference
+      reference: 1
+      test:
+        - 2
+        - 3
+- block:
+  - section:
+      attribute: coloration_bright_dark
+      reference: 1
+      test:
+        - 2
+        - 3
 
-- screen:
-    attribute: coloration
-    reference: 1
-    test:
-      - 2
-      - 3
-
-- screen:
-    attribute: coloration
-    reference: 4
-    test:
-      - 5
-      - 6
+#randomize:
+# randomize blocks of the experiment if True
+#- blocks: True
+# randomize sections within each block of the experiment if True
+#- sections: True
+# randomize test conditions within each section of the experiment if True
+#- test: True
