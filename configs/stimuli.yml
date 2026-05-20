@@ -1,0 +1,20 @@
+# Define stimuli as required by different Handlers
+# - Not all defined stimuli must be used. All required stimuli must be defined.
+# - Not all defined Handlers must be used. At least the required Handler must
+#   be defined.
+
+SounddeviceHandler:
+  1:
+    file: stimulus_1.wav
+  2:
+    file: stimulus_2.wav
+  3:
+    file: stimulus_3.wav
+
+OSCHandler:
+  1:
+    messages: [/select 1, /play]
+  2:
+    messages: [/select 2, /play]
+  3:
+    messages: [/select 3, /play]

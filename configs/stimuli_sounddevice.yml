@@ -1,9 +1,0 @@
-# Define stimuli as required by the SounddeviceHandler
-# (Not all defined stimuli must be used)
-
-1:
-  file: stimulus_1.wav
-2:
-  file: stimulus_2.wav
-3:
-  file: stimulus_3.wav

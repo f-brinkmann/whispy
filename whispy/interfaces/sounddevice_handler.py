@@ -34,9 +34,14 @@ class SounddeviceHandler:
         # load config file
         if stimuli is None:
             stimuli = os.path.join(
-                FILEPATH, '..', '..', 'configs', 'stimuli_sounddevice.yml')
+                FILEPATH, '..', '..', 'configs', 'stimuli.yml')
 
         self.stimuli = read_config(stimuli)
+
+        if 'SounddeviceHandler' not in self.stimuli:
+            raise ValueError("Stimuli are not defined for SounddeviceHandler")
+
+        self.stimuli = self.stimuli["SounddeviceHandler"]
 
         # parse base directory containing audio stimuli
         if base_dir is None:
