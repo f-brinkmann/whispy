@@ -35,13 +35,17 @@ class MushraLike2D(QMainWindow):
         task: Optional[str] = "Rate the\n**Quality**\n",
         description: Optional[str] = "The overall quality",
         values: Optional[List[float]] = [0, .25, .5, 1],
-        labels: Optional[List[Optional[str]]] = ['identical', None, None, 'very different'],
+        labels: Optional[List[Optional[str]]] = \
+            ['identical', None, None, 'very different'],
         neutral_value: float = 0,
         mushra_like_2d: Optional[Dict] = None,
+        # get rid of
+        reference: bool = True,
+        num_buttons: int = 5,
+        # contained in config
         task_fontsize: int = 16,
         task_spacing: int = 0,
         fontsize: int = 12,
-        reference: bool = True,
         autoplay_reference: bool = True,
         autoplay_delay: float = 0.25,
         window_size: tuple[int, int] = (1100, 500),
@@ -53,7 +57,6 @@ class MushraLike2D(QMainWindow):
         button_color_initial: str = "#ffffff",
         button_color_clicked: str = "#d9dde3",
         button_color_active: str = "#a5d6a7",
-        num_buttons: int = 5,
         button_size: float = 56,
         button_fontsize: int = 12,
         button_spacing: float = 8,
@@ -960,10 +963,12 @@ if __name__ == "__main__":
     button_spacing = 8
 
     window = MushraLike2D(
+        reference=reference,
+        num_buttons=button_number,
+        # in config
         task_fontsize=task_fontsize,
         task_spacing=task_spacing,
         fontsize=fontsize,
-        reference=reference,
         autoplay_reference=autoplay_reference,
         autoplay_delay=autoplay_delay,
         window_size=window_size,
@@ -975,7 +980,6 @@ if __name__ == "__main__":
         button_color_initial=button_color_initial,
         button_color_clicked=button_color_clicked,
         button_color_active=button_color_active,
-        num_buttons=button_number,
         button_size=button_size,
         button_fontsize=button_fontsize,
         button_spacing=button_spacing,
