@@ -39,70 +39,46 @@ class MushraLike2D(QMainWindow):
             ['identical', None, None, 'very different'],
         neutral_value: float = 0,
         mushra_like_2d: Optional[Dict] = None,
-        # get rid of
+        # get rid of later
         reference: bool = True,
-        num_buttons: int = 5,
-        # contained in config
-        task_fontsize: int = 16,
-        task_spacing: int = 0,
-        fontsize: int = 12,
-        autoplay_reference: bool = True,
-        autoplay_delay: float = 0.25,
-        window_size: tuple[int, int] = (1100, 500),
-        verbose: bool = True,
-        fontcolor: str = "#e8eaed",
-        window_background_color: str = "#2b2b2b",
-        rating_area_background_color: str = "#f6f7f9",
-        edge_color: str = "#d7dbe0",
-        button_color_initial: str = "#ffffff",
-        button_color_clicked: str = "#d9dde3",
-        button_color_active: str = "#a5d6a7",
-        button_size: float = 56,
-        button_fontsize: int = 12,
-        button_spacing: float = 8,
+        num_buttons: int = 3,
     ) -> None:
 
         super().__init__()
-        self._verbose = bool(verbose)
 
+        # load config file
         if mushra_like_2d is None:
             mushra_like_2d = read_config(os.path.join(
                 FILEPATH, '..', '..', 'configs', 'mushra_like_2d.yml'
             ))
 
-        if not isinstance(window_size, tuple) or len(window_size) != 2:
+        # set global parameters
+        self._verbose = bool(mushra_like_2d["verbose"])
+
+        window_size = mushra_like_2d["window_size"]
+        if not isinstance(window_size, list) or len(window_size) != 2:
             raise ValueError("window_size must be a (width, height) tuple")
 
         self.resize(int(window_size[0]), int(window_size[1]))
         self._continue_info_window: Optional[InfoWindow] = None
 
         container = QWidget(self)
-        container.setStyleSheet(f"background-color: {window_background_color};")
+        container.setStyleSheet(
+            f"background-color: {mushra_like_2d['window_background_color']};"
+        )
         layout = QVBoxLayout(container)
         layout.setContentsMargins(22, 22, 22, 22)
 
+        # add main rating window
         self.drag_area = _MainWindow(
             num_buttons=num_buttons,
             reference=reference,
-            button_size=button_size,
             task=task,
             description=description,
-            task_fontsize=task_fontsize,
-            fontsize=fontsize,
-            button_fontsize=button_fontsize,
-            button_spacing=button_spacing,
-            fontcolor=fontcolor,
-            rating_area_background_color=rating_area_background_color,
-            edge_color=edge_color,
-            button_color_initial=button_color_initial,
-            button_color_clicked=button_color_clicked,
-            button_color_active=button_color_active,
-            autoplay_reference=autoplay_reference,
-            autoplay_delay=autoplay_delay,
             neutral_value=neutral_value,
             values=values,
             labels=labels,
-            task_spacing=task_spacing,
+            mushra_like_2d=mushra_like_2d,
             parent=container,
         )
         layout.addWidget(self.drag_area)
@@ -161,28 +137,24 @@ class _MainWindow(QWidget):
         self,
         num_buttons: int = 5,
         reference: bool = True,
-        button_size: float = 56,
         task: str = "Rate the\n**Tone colour bright-dark**\n",
         description: str = "some text",
-        task_fontsize: int = 16,
-        fontsize: int = 12,
-        button_fontsize: int = 12,
-        button_spacing: float = 8,
-        fontcolor: str = "#e8eaed",
-        rating_area_background_color: str = "#f6f7f9",
-        edge_color: str = "#d7dbe0",
-        button_color_initial: str = "#ffffff",
-        button_color_clicked: str = "#d9dde3",
-        button_color_active: str = "#a5d6a7",
-        autoplay_reference: bool = True,
-        autoplay_delay: float = 0.25,
         neutral_value: float = 0,
         values: Optional[List[float]] = None,
         labels: Optional[List[Optional[str]]] = None,
-        task_spacing: int = 0,
+        mushra_like_2d: Optional[Dict] = None,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
+        if mushra_like_2d is None:
+            raise ValueError("mushra_like_2d config is required")
+
+        task_fontsize = mushra_like_2d["task_fontsize"]
+        task_spacing = mushra_like_2d["task_spacing"]
+        fontsize = mushra_like_2d["fontsize"]
+        button_fontsize = mushra_like_2d["button_fontsize"]
+        fontcolor = mushra_like_2d["fontcolor"]
+
         self._description = description
         self._fontsize = max(1, int(fontsize))
         self._fontcolor = fontcolor
@@ -231,19 +203,10 @@ class _MainWindow(QWidget):
         self.view = _RatingArea(
             num_buttons=num_buttons,
             reference=reference,
-            button_size=button_size,
-            button_fontsize=button_fontsize,
-            button_spacing=button_spacing,
-            rating_area_background_color=rating_area_background_color,
-            edge_color=edge_color,
-            button_color_initial=button_color_initial,
-            button_color_clicked=button_color_clicked,
-            button_color_active=button_color_active,
-            autoplay_reference=autoplay_reference,
-            autoplay_delay=autoplay_delay,
             neutral_value=neutral_value,
             values=values,
             labels=labels,
+            mushra_like_2d=mushra_like_2d,
             parent=self,
         )
         layout.addWidget(self.view)
@@ -317,22 +280,27 @@ class _RatingArea(QGraphicsView):
         self,
         num_buttons: int = 5,
         reference: bool = True,
-        button_size: float = 56,
-        button_fontsize: int = 17,
-        button_spacing: float = 8,
-        rating_area_background_color: str = "#f6f7f9",
-        edge_color: str = "#d7dbe0",
-        button_color_initial: str = "#ffffff",
-        button_color_clicked: str = "#d9dde3",
-        button_color_active: str = "#a5d6a7",
-        autoplay_reference: bool = True,
-        autoplay_delay: float = 0.25,
         neutral_value: float = 0,
         values: Optional[List[float]] = None,
         labels: Optional[List[Optional[str]]] = None,
+        mushra_like_2d: Optional[Dict] = None,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
+
+        if mushra_like_2d is None:
+            raise ValueError("mushra_like_2d config is required")
+
+        button_size = mushra_like_2d["button_size"]
+        button_fontsize = mushra_like_2d["button_fontsize"]
+        button_spacing = mushra_like_2d["button_spacing"]
+        rating_area_background_color = mushra_like_2d["rating_area_background_color"]
+        edge_color = mushra_like_2d["edge_color"]
+        button_color_initial = mushra_like_2d["button_color_initial"]
+        button_color_clicked = mushra_like_2d["button_color_clicked"]
+        button_color_active = mushra_like_2d["button_color_active"]
+        autoplay_reference = mushra_like_2d["autoplay_reference"]
+        autoplay_delay = mushra_like_2d["autoplay_delay"]
 
         self._num_buttons = max(1, num_buttons)
         self._reference = bool(reference)
@@ -935,54 +903,11 @@ if __name__ == "__main__":
     app = QApplication([])
 
     reference = True
-
     neutral_value = 0
-
-    task_fontsize = 16
-    task_spacing = 24
-    fontsize = 12
-
-    autoplay_reference = True
-    autoplay_delay = .5
-
-    window_size = (1100, 550)
-    verbose = True
-
-    fontcolor = "#e8eaed"
-    window_background_color = "#2b2b2b"
-    rating_area_background_color = "#f6f7f9"
-    edge_color = "#d7dbe0"
-
-    button_color_initial = "#ffffff"
-    button_color_clicked = "#d9dde3"
-    button_color_active = "#a5d6a7"
-
-    button_number = 4
-    button_size = 40
-    button_fontsize = 16
-    button_spacing = 8
 
     window = MushraLike2D(
         reference=reference,
-        num_buttons=button_number,
-        # in config
-        task_fontsize=task_fontsize,
-        task_spacing=task_spacing,
-        fontsize=fontsize,
-        autoplay_reference=autoplay_reference,
-        autoplay_delay=autoplay_delay,
-        window_size=window_size,
-        verbose=verbose,
-        fontcolor=fontcolor,
-        window_background_color=window_background_color,
-        rating_area_background_color=rating_area_background_color,
-        edge_color=edge_color,
-        button_color_initial=button_color_initial,
-        button_color_clicked=button_color_clicked,
-        button_color_active=button_color_active,
-        button_size=button_size,
-        button_fontsize=button_fontsize,
-        button_spacing=button_spacing,
+        neutral_value=neutral_value,
     )
     window.show()
     app.exec()

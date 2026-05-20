@@ -1,5 +1,5 @@
 # Window size in pixels and verbosity
-window_size: (1100, 550)
+window_size: [1100, 550]
 verbose: True
 
 # overall color theme
@@ -14,7 +14,6 @@ button_color_clicked: "#d9dde3"
 button_color_active: "#a5d6a7"
 
 # look of rating buttons
-button_number: 4
 button_size: 40
 button_fontsize: 16
 button_spacing: 8
