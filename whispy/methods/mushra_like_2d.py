@@ -40,7 +40,7 @@ class MushraLike2D(QMainWindow):
         mushra_like_2d: Optional[Dict] = None,
         # get rid of later
         reference: bool = True,
-        num_buttons: int = 3,
+        num_buttons: int = 15,
     ) -> None:
 
         super().__init__()
@@ -668,18 +668,37 @@ class _RatingArea(QGraphicsView):
         base_center_x = self._value_to_center_x(self._values[0], rect.width())
         base_x = base_center_x - half_size
 
+        # Precompute the reference tile's top-left position so numbered buttons
+        # can avoid it. R is placed at the horizontal position of neutral_value
+        # and centred vertically.
+        if self._reference:
+            r_center_x = self._value_to_center_x(self._neutral_value, rect.width())
+            r_x = r_center_x - half_size
+            r_y = rect.height() / 2 - half_size
+        else:
+            r_x = r_y = None
+
+        def _overlaps_reference(x: float, y: float) -> bool:
+            if r_x is None:
+                return False
+            return abs(x - r_x) < self._button_size and abs(y - r_y) < self._button_size
+
         specs: List[_DraggableTileSpec] = []
         current_column = 0
         current_y = 0.0
 
         for idx in range(count):
-            if idx > 0 and current_y > max_y:
-                current_column += 1
-                current_y = 0.0
+            # Advance past any slot that would overlap the reference tile.
+            while True:
+                if current_y > max_y:
+                    current_column += 1
+                    current_y = 0.0
+                x = min(max(base_x + current_column * step, 0.0), max_x)
+                y = min(max(current_y, 0.0), max_y)
+                if not _overlaps_reference(x, y):
+                    break
+                current_y += step
 
-            x = base_x + current_column * step
-            x = min(max(x, 0.0), max_x)
-            y = min(max(current_y, 0.0), max_y)
             specs.append(_DraggableTileSpec(name=str(idx + 1), x=x, y=y))
             current_y += step
         return specs
