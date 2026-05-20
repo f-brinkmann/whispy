@@ -8,8 +8,8 @@ import sys
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QPainter, QPen
+from PyQt6.QtCore import QEventLoop, QPointF, QRectF, Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QColor, QCloseEvent, QFont, QPainter, QPen
 from PyQt6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -45,9 +45,10 @@ class MushraLike2D(QMainWindow):
             ['identical', None, None, None, 'very different'],
         neutral_value: float = 0,
         mushra_like_2d: Optional[str] = None,
+        block_until_closed: bool = True,
         # get rid of later
         reference: bool = True,
-        num_buttons: int = 6,
+        num_buttons: int = 2,
     ) -> None:
 
         # QApplication must exist before any QWidget is constructed.
@@ -93,6 +94,7 @@ class MushraLike2D(QMainWindow):
                         int(mushra_like_2d["window_size"][1]))
 
         self._continue_info_window: Optional[InfoWindow] = None
+        self._wait_loop: Optional[QEventLoop] = None
 
         container = QWidget(self)
         container.setStyleSheet(
@@ -126,6 +128,9 @@ class MushraLike2D(QMainWindow):
         else:
             self.show()
         self.drag_area.continueClicked.connect(self._on_continue_clicked)
+        # Block code execution outside this class until the window is closed
+        if block_until_closed:
+            self.wait_until_closed()
 
     def _on_tile_pressed(self, tile_name: str, pos: QPointF) -> None:
         if self._verbose:
@@ -160,6 +165,23 @@ class MushraLike2D(QMainWindow):
         self._continue_info_window.show()
         self._continue_info_window.raise_()
         self._continue_info_window.activateWindow()
+
+    def get_values(self) -> Dict[str, Dict[str, float | bool]]:
+        return self.drag_area.view.get_values()
+
+    def wait_until_closed(self) -> None:
+        if not self.isVisible():
+            return
+
+        if self._wait_loop is None:
+            self._wait_loop = QEventLoop(self)
+
+        self._wait_loop.exec()
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        if self._wait_loop is not None and self._wait_loop.isRunning():
+            self._wait_loop.quit()
+        super().closeEvent(event)
 
 
 class _MainWindow(QWidget):
@@ -709,6 +731,15 @@ class _RatingArea(QGraphicsView):
             value_x = min_v + ratio * (max_v - min_v)
 
         return QPointF(value_x, pos.y())
+
+    def get_values(self) -> Dict:
+        values = {}
+        for name, tile in self._tiles.items():
+            if name == self._neutral_tile_name:
+                continue
+            value_pos = self._map_pos_to_value_space(tile.scenePos())
+            values[name] = float(value_pos.x())
+        return values
 
     def _capture_relative_x_positions(self) -> Dict[str, float]:
         rect = self._scene.sceneRect()
