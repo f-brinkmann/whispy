@@ -1,5 +1,12 @@
-# Window size in pixels and verbosity
+# Window size in pixels
 window_size: [1100, 550]
+
+# Rating area size.
+# Percentage with respect to window size.
+# Use 100% for maximally possible size.
+rating_area_size: [100, 100]
+
+# Print verbose info for debugging
 verbose: True
 
 # overall color theme

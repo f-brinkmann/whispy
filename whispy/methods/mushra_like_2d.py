@@ -185,6 +185,7 @@ class _MainWindow(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
+        layout.addStretch(1)
 
         task_row = QHBoxLayout()
         task_row.setContentsMargins(0, 0, 0, 0)
@@ -220,7 +221,7 @@ class _MainWindow(QWidget):
             fontcolor=fontcolor,
             parent=self,
         )
-        layout.addWidget(self.labels_row)
+        layout.addWidget(self.labels_row, alignment=Qt.AlignmentFlag.AlignHCenter)
 
         self.view = _RatingArea(
             num_buttons=num_buttons,
@@ -231,8 +232,9 @@ class _MainWindow(QWidget):
             mushra_like_2d=mushra_like_2d,
             parent=self,
         )
-        layout.addWidget(self.view)
+        layout.addWidget(self.view, alignment=Qt.AlignmentFlag.AlignHCenter)
 
+        self.labels_row.setFixedWidth(self.view.minimumWidth())
         self.view.lineLayoutChanged.connect(self.labels_row.set_layout)
         self.view._draw_value_lines()
 
@@ -253,6 +255,7 @@ class _MainWindow(QWidget):
         controls_layout.addWidget(self.stop_button)
         controls_layout.addWidget(self.continue_button)
         layout.addLayout(controls_layout)
+        layout.addStretch(1)
 
         self.view.tilePressed.connect(self.tilePressed)
         self.view.tileReleased.connect(self.tileReleased)
@@ -316,6 +319,8 @@ class _RatingArea(QGraphicsView):
         button_color_active = mushra_like_2d["button_color_active"]
         autoplay_reference = mushra_like_2d["autoplay_reference"]
         autoplay_delay = mushra_like_2d["autoplay_delay"]
+        window_size = mushra_like_2d["window_size"]
+        rating_area_size = mushra_like_2d["rating_area_size"]
 
         self._num_buttons = max(1, num_buttons)
         self._reference = bool(reference)
@@ -360,6 +365,19 @@ class _RatingArea(QGraphicsView):
         self._autoplay_timer.timeout.connect(self._on_autoplay_timer_timeout)
 
         self._button_area_width: float = 0.0
+
+        # Apply rating_area_size as a percentage of the window dimensions.
+        # Width  bounds: [200 px, window_width  - 44 px (container margins)]
+        # Height bounds: [80 px,  window_height - 200 px (margins + other widgets)]
+        _win_w = int(window_size[0])
+        _win_h = int(window_size[1])
+        _min_w, _max_w = 200, max(200, _win_w - 44)
+        _min_h, _max_h = 80,  max(80,  _win_h - 200)
+        _x_pct = max(0.0, min(100.0, float(rating_area_size[0]))) / 100.0
+        _y_pct = max(0.0, min(100.0, float(rating_area_size[1]))) / 100.0
+        self.setFixedWidth( max(_min_w, min(_max_w, int(_win_w * _x_pct))))
+        self.setFixedHeight(max(_min_h, min(_max_h, int(_win_h * _y_pct))))
+
         self._sync_scene_to_viewport()
         self._build_tiles()
 
