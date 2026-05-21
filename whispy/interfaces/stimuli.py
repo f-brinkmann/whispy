@@ -25,7 +25,7 @@ class StimuliHandler(ABC):
         raise NotImplementedError
 
 
-class SounddeviceHandler(StimuliHandler):
+class SoundDevice(StimuliHandler):
 
     def __init__(self, stimuli=None, base_dir=None, loop=True):
         """Initialize the sounddevice backend and load configured stimuli.
@@ -55,10 +55,10 @@ class SounddeviceHandler(StimuliHandler):
 
         self.stimuli = read_config(stimuli)
 
-        if 'SounddeviceHandler' not in self.stimuli:
-            raise ValueError("Stimuli are not defined for SounddeviceHandler")
+        if 'SoundDevice' not in self.stimuli:
+            raise ValueError("Stimuli are not defined for SoundDevice")
 
-        self.stimuli = self.stimuli["SounddeviceHandler"]
+        self.stimuli = self.stimuli["SoundDevice"]
 
         # parse base directory containing audio stimuli
         if base_dir is None:

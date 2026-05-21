@@ -7,7 +7,7 @@
 # best practice to use descriptive names because the names will be saved as
 # part of the results of an experiment.
 
-SounddeviceHandler:
+SoundDevice:
   1:
     file: stimulus_1.wav
   2:

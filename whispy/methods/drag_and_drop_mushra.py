@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from whispy.gui import InfoWindow
-from whispy.interfaces import StimuliHandler, SounddeviceHandler
+from whispy.interfaces import StimuliHandler, SoundDevice
 from whispy.utils import read_config
 
 import pandas
@@ -84,7 +84,7 @@ class DragAndDropMUSHRA(QMainWindow):
 
         # initialize default audio handler if it was not passed
         if stimuli_handler is None:
-            stimuli_handler = SounddeviceHandler()
+            stimuli_handler = SoundDevice()
 
         self.stimuli_handler: StimuliHandler = stimuli_handler
 
