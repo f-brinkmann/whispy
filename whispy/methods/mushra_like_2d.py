@@ -4,6 +4,7 @@ from whispy.gui import InfoWindow
 from whispy.interfaces import StimuliHandler, SounddeviceHandler
 from whispy.utils import read_config
 
+import pandas
 import os
 import sys
 from dataclasses import dataclass
@@ -68,14 +69,16 @@ class MushraLike2D(QMainWindow):
         # initialize experimental parameters ----------------------------------
         # initialize rating screen if it was not passed
         if screen is None:
-            screen = {"block": 0,
-                    "section": 0,
-                    "reference": 1,
-                    "test": [2, 3],
-                    "block_changed": True,
-                    "section_changed": False,
-                    "attribute": "difference",
-                    "name": None}
+            screen = {
+                "block": 0,
+                "section": 0,
+                "reference": 1,
+                "test": [2, 3],
+                "block_changed": True,
+                "section_changed": False,
+                "attribute": "difference",
+                "block_name": "Block 1",
+                "section_name": "Section 1"}
 
         self.screen = screen
 
@@ -217,7 +220,7 @@ class MushraLike2D(QMainWindow):
             self.close()
 
             if self._verbose:
-                print(self.get_values())
+                print(self.get_results())
 
             return
 
@@ -231,8 +234,32 @@ class MushraLike2D(QMainWindow):
             block_until_closed=False,
         )
 
-    def get_values(self) -> Dict[str, Dict[str, float | bool]]:
-        return self.drag_area.view.get_values()
+    def get_results(
+            self,
+            results: Optional[pandas.DataFrame] = None
+            ) -> Dict[str, Dict[str, float | bool]]:
+
+        # ratings coded by the names of the GUI buttons/tiles
+        ratings_raw = self.drag_area.view.get_values()
+        # decode to stimulus names
+        ratings = {}
+        for tile_name, rating in ratings_raw.items():
+            ratings[self._get_stimulus_name(tile_name)] = rating
+
+
+        if results is None:
+            # create empty dataframe with columns from the screen metadata
+            results = pandas.DataFrame(
+                columns=list(self.screen.keys()) + ['rating'])
+
+        # fill data frame in long format (one row per test condition)
+        for t in self.screen["test"]:
+            row = dict(self.screen)
+            row["test"] = t
+            row["rating"] = ratings[t]
+            results.loc[len(results)] = row
+
+        return results
 
     def wait_until_closed(self) -> None:
         if not self.isVisible():

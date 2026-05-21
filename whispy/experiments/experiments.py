@@ -74,7 +74,11 @@ def course(
     # loop blocks
     for b_idx in blocks:
 
-        block = experiment[b_idx]["block"]
+        # get current block
+        block_raw = experiment[b_idx]["block"]
+        # filter out everything that is not a section (block meta data)
+        block = [b for b in block_raw if 'section' in b]
+        block_name = [b['block_name'] for b in block_raw if 'block_name' in b]
 
         # randomize sections
         n_sections = len(block)
@@ -125,7 +129,8 @@ def course(
                      "block_changed": bool(block_changed),
                      "section_changed": bool(section_changed),
                      "attribute": section["attribute"],
-                     "name": section["name"],}
+                     "block_name": block_name[0],
+                     "section_name": section["section_name"],}
                 )
 
     return experimental_course
