@@ -154,6 +154,8 @@ class MushraLike2D(QMainWindow):
         self.drag_area.tilePressed.connect(self._on_tile_pressed)
         self.drag_area.tileReleased.connect(self._on_tile_released)
         self.drag_area.tileClicked.connect(self._on_tile_clicked)
+        self.drag_area.tileActivated.connect(self._on_tile_activated)
+        self.drag_area.tileDeactivated.connect(self._on_tile_deactivated)
         self.drag_area.stopClicked.connect(self._on_stop_clicked)
 
         # show window in front of all other windows
@@ -180,6 +182,14 @@ class MushraLike2D(QMainWindow):
     def _on_tile_clicked(self, tile_name: str, pos: QPointF) -> None:
         if self._verbose:
             print(f"clicked: {tile_name} at ({pos.x():.2f}, {pos.y()})")
+
+    def _on_tile_activated(self, tile_name: str) -> None:
+        if self._verbose:
+            print(f"activated: {tile_name}")
+
+    def _on_tile_deactivated(self, tile_name: str) -> None:
+        if self._verbose:
+            print(f"deactivated: {tile_name}")
 
     def _on_stop_clicked(self) -> None:
         if self._verbose:
@@ -223,6 +233,8 @@ class _MainWindow(QWidget):
     tilePressed = pyqtSignal(str, QPointF)
     tileReleased = pyqtSignal(str, QPointF)
     tileClicked = pyqtSignal(str, QPointF)
+    tileActivated = pyqtSignal(str)
+    tileDeactivated = pyqtSignal(str)
     stopClicked = pyqtSignal()
     continueClicked = pyqtSignal()
 
@@ -335,6 +347,8 @@ class _MainWindow(QWidget):
         self.view.tilePressed.connect(self.tilePressed)
         self.view.tileReleased.connect(self.tileReleased)
         self.view.tileClicked.connect(self.tileClicked)
+        self.view.tileActivated.connect(self.tileActivated)
+        self.view.tileDeactivated.connect(self.tileDeactivated)
 
     def _on_info_button_clicked(self) -> None:
         self._info_window = InfoWindow(
@@ -364,6 +378,8 @@ class _RatingArea(QGraphicsView):
     tilePressed = pyqtSignal(str, QPointF)
     tileReleased = pyqtSignal(str, QPointF)
     tileClicked = pyqtSignal(str, QPointF)
+    tileActivated = pyqtSignal(str)
+    tileDeactivated = pyqtSignal(str)
     lineLayoutChanged = pyqtSignal(list, list, list)
 
     def __init__(
@@ -627,12 +643,7 @@ class _RatingArea(QGraphicsView):
             self._set_active_tile(self._neutral_tile_name, allow_reference_fallback=False)
 
     def _set_active_tile(self, name: Optional[str], allow_reference_fallback: bool) -> None:
-        if self._active_tile_name is not None:
-            current_tile = self._tiles.get(self._active_tile_name)
-            if current_tile is not None:
-                current_tile.set_active(False)
-            self._active_tile_name = None
-
+        previous_name = self._active_tile_name
         target_name = name
         if (
             target_name is None
@@ -641,6 +652,16 @@ class _RatingArea(QGraphicsView):
             and self._reference_activation_enabled
         ):
             target_name = self._neutral_tile_name
+
+        if previous_name == target_name:
+            return
+
+        if previous_name is not None:
+            current_tile = self._tiles.get(previous_name)
+            if current_tile is not None:
+                current_tile.set_active(False)
+            self.tileDeactivated.emit(previous_name)
+            self._active_tile_name = None
 
         if target_name is None:
             return
@@ -652,6 +673,7 @@ class _RatingArea(QGraphicsView):
         target_tile.set_active(True)
         self._active_tile_name = target_name
         self._activated_once.add(target_name)
+        self.tileActivated.emit(target_name)
 
     def _update_button_area_width(self) -> None:
         """Recompute the width reserved for the button staging columns."""
