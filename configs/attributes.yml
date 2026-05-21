@@ -9,7 +9,7 @@ difference:
   task: |
     Rate the
     **Difference**
-  definition: Existence of a noticeable difference.
+  description: Existence of a noticeable difference.
   labels: [none, null, null, null, very large]
   values: [0, .25, .5, .75, 1]
   neutral_value: 0
@@ -18,7 +18,7 @@ coloration_bright_dark:
   task: |
     Rate the
     **Tone colour bright-dark**
-  definition: Timbral impression which is determined by the ratio of high to low frequency components
+  description: Timbral impression which is determined by the ratio of high to low frequency components
   labels: [darker, null, null, null, brighter]
   values: [-1, -.5, 0, .5, 1]
   neutral_value: 0

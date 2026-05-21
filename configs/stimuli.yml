@@ -2,6 +2,10 @@
 # - Not all defined stimuli must be used. All required stimuli must be defined.
 # - Not all defined Handlers must be used. At least the required Handler must
 #   be defined.
+#
+# Stimuli are named 1, 2, and 3 here but can have any names or numbers. It is
+# best practice to use descriptive names because the names will be saved as
+# part of the results of an experiment.
 
 SounddeviceHandler:
   1:

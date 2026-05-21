@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from whispy.gui import InfoWindow
 from whispy.utils import read_config
+from whispy.interfaces import SounddeviceHandler
 
 import os
 import sys
@@ -38,17 +39,11 @@ class MushraLike2D(QMainWindow):
 
     def __init__(
         self,
-        task: Optional[str] = "Rate the\n**Quality**\n",
-        description: Optional[str] = "The overall quality",
-        values: Optional[List[float]] = [0, .25, .5, .75, 1],
-        labels: Optional[List[Optional[str]]] = \
-            ['identical', None, None, None, 'very different'],
-        neutral_value: float = 0,
+        screen: Optional[Dict] = None,
+        stimuli_handler: Optional = None,
+        attributes: Optional[str] = None,
         mushra_like_2d: Optional[str] = None,
         block_until_closed: bool = True,
-        # get rid of later
-        reference: bool = True,
-        num_buttons: int = 2,
     ) -> None:
 
         # QApplication must exist before any QWidget is constructed.
@@ -63,19 +58,55 @@ class MushraLike2D(QMainWindow):
             from IPython import get_ipython
             ip = get_ipython()
             if ip is not None:
-                ip.enable_gui('qt6')
+                ip.enable_gui("qt6")
         except Exception:
             pass
 
         super().__init__()
 
-        # load config file
+        # initialize experimental parameters ----------------------------------
+        # initialize rating screen if it was not passed
+        if screen is None:
+            screen = {"block": 0,
+                    "section": 0,
+                    "reference": 1,
+                    "test": [2, 3],
+                    "block_changed": True,
+                    "section_changed": False,
+                    "attribute": "difference",
+                    "name": None}
+
+        # initialize default audio handler if it was not passed
+        if stimuli_handler is None:
+            stimuli_handler = SounddeviceHandler()
+
+        # initialize attributes if they were not passed
+        if attributes is None:
+            attributes = os.path.join(
+                FILEPATH, "..", "..", "configs", "attributes.yml")
+
+        attributes = read_config(attributes)
+
+        # read GUI config (use default if not provided)
         if mushra_like_2d is None:
             mushra_like_2d = os.path.join(
-                FILEPATH, '..', '..', 'configs', 'mushra_like_2d.yml')
+                FILEPATH, "..", "..", "configs", "mushra_like_2d.yml")
 
         mushra_like_2d = read_config(mushra_like_2d)
 
+        # parse config data to get parameters for current task ----------------
+        # current attribute and rating scale
+        task = attributes[screen["attribute"]]["task"]
+        description = attributes[screen["attribute"]]["description"]
+        neutral_value = attributes[screen["attribute"]]["neutral_value"]
+        values = attributes[screen["attribute"]]["values"]
+        labels = attributes[screen["attribute"]]["labels"]
+
+        # number of conditions
+        num_buttons = len(screen["test"])
+        reference = screen["reference"] is not None
+
+        # initialize QT parameters --------------------------------------------
         # set global parameters
         self._verbose = bool(mushra_like_2d["verbose"])
 
