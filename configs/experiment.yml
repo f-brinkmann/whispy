@@ -5,16 +5,22 @@
 #   structure blocks
 #
 # - 'attribute' must match attributes.yml
+# - 'name' is optional an can be used to describe a section.
 # - 'reference' and 'test' must match the stimuli.yml
+#
+# All information contained in this config can be used to save the results of
+# the experiment
 - block:
   - section:
       attribute: difference
+      name: null
       reference: 1
       test:
         - 2
         - 3
   - section:
       attribute: difference
+      name: null
       reference: 1
       test:
         - 2
@@ -22,15 +28,8 @@
 - block:
   - section:
       attribute: coloration_bright_dark
+      name: null
       reference: 1
       test:
         - 2
         - 3
-
-#randomize:
-# randomize blocks of the experiment if True
-#- blocks: True
-# randomize sections within each block of the experiment if True
-#- sections: True
-# randomize test conditions within each section of the experiment if True
-#- test: True

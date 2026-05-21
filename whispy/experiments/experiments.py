@@ -123,7 +123,9 @@ def course(
                      "reference": section["reference"],
                      "test": conditions[t_start:t_end],
                      "block_changed": bool(block_changed),
-                     "section_changed": bool(section_changed)}
+                     "section_changed": bool(section_changed),
+                     "attribute": section["attribute"],
+                     "name": section["name"],}
                 )
 
     return experimental_course
