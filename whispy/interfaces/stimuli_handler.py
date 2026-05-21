@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from typing import Optional
+
 from whispy.utils import read_config
 
 import pyfar as pf
@@ -8,7 +13,19 @@ import os
 # Required for loading the default configs
 FILEPATH = os.path.dirname(os.path.abspath(__file__))
 
-class SounddeviceHandler:
+
+class StimuliHandler(ABC):
+    """Abstract base class for all StimuliHandler."""
+    @abstractmethod
+    def play(self, stimulus: str) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def stop(self, stimulus: Optional[str] = None) -> None:
+        raise NotImplementedError
+
+
+class SounddeviceHandler(StimuliHandler):
 
     def __init__(self, stimuli=None, base_dir=None, loop=True):
         """Initialize the sounddevice backend and load configured stimuli.
@@ -67,7 +84,7 @@ class SounddeviceHandler:
         sd.default.samplerate = self.sampling_rate
         self.loop = loop
 
-    def play(self, stimulus):
+    def play(self, stimulus: str) -> None:
         """
         Play stimulus.
 
@@ -79,7 +96,7 @@ class SounddeviceHandler:
         sd.stop()
         sd.play(self.stimuli[stimulus]['signal'].time.T, loop=self.loop)
 
-    def stop(self, stimulus=None):
+    def stop(self, stimulus: str | None = None) -> None:
         """
         Stop playback.
 

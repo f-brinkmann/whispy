@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from whispy.gui import InfoWindow
+from whispy.interfaces import StimuliHandler, SounddeviceHandler
 from whispy.utils import read_config
-from whispy.interfaces import SounddeviceHandler
 
 import os
 import sys
@@ -40,7 +40,7 @@ class MushraLike2D(QMainWindow):
     def __init__(
         self,
         screen: Optional[Dict] = None,
-        stimuli_handler: Optional = None,
+        stimuli_handler: Optional[StimuliHandler] = None,
         attributes: Optional[str] = None,
         mushra_like_2d: Optional[str] = None,
         block_until_closed: Optional[bool] = True,
@@ -83,7 +83,7 @@ class MushraLike2D(QMainWindow):
         if stimuli_handler is None:
             stimuli_handler = SounddeviceHandler()
 
-        self.stimuli_handler = stimuli_handler
+        self.stimuli_handler: StimuliHandler = stimuli_handler
 
         # initialize attributes if they were not passed
         if attributes is None:
