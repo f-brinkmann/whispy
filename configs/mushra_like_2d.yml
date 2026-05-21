@@ -27,7 +27,7 @@ button_spacing: 8
 # automatically, after the test conditions
 # and the delay of the auto play in seconds
 autoplay_reference: True
-autoplay_delay: .5
+autoplay_delay: .1
 
 # The task is a string displayed on top of the GUI
 # This defines the fontsize and the space between
