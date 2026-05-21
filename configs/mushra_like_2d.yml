@@ -13,12 +13,13 @@ verbose: True
 fontcolor: "#e8eaed"
 window_background_color: "#2b2b2b"
 rating_area_background_color: "#f6f7f9"
-edge_color: "#d7dbe0"
+edge_color: "#454545"
 
 # color theme for the rating buttons
 button_color_initial: "#ffffff"
 button_color_clicked: "#d9dde3"
 button_color_active: "#a5d6a7"
+button_fontcolor: "#2b2b2b"
 
 # look of rating buttons
 button_size: 40

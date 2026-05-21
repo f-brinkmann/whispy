@@ -358,6 +358,7 @@ class _RatingArea(QGraphicsView):
         button_color_initial = mushra_like_2d["button_color_initial"]
         button_color_clicked = mushra_like_2d["button_color_clicked"]
         button_color_active = mushra_like_2d["button_color_active"]
+        button_fontcolor = mushra_like_2d["button_fontcolor"]
         autoplay_reference = mushra_like_2d["autoplay_reference"]
         autoplay_delay = mushra_like_2d["autoplay_delay"]
         window_size = mushra_like_2d["window_size"]
@@ -374,6 +375,7 @@ class _RatingArea(QGraphicsView):
         self._button_color_initial = button_color_initial
         self._button_color_clicked = button_color_clicked
         self._button_color_active = button_color_active
+        self._button_fontcolor = button_fontcolor
         self._autoplay_reference = autoplay_reference
         self._autoplay_delay_ms = max(0, int(float(autoplay_delay) * 1000))
         self._neutral_value = float(neutral_value)
@@ -477,6 +479,7 @@ class _RatingArea(QGraphicsView):
                 initial_color=self._button_color_initial,
                 active_color=self._button_color_active,
                 edge_color=self._edge_color,
+                font_color=self._button_fontcolor,
                 font_size=self._button_fontsize,
                 switch_style_on_first_click=True,
             )
@@ -499,6 +502,7 @@ class _RatingArea(QGraphicsView):
                 initial_color="#d9dde3",
                 active_color=self._button_color_active,
                 edge_color=self._edge_color,
+                font_color=self._button_fontcolor,
                 font_size=self._button_fontsize,
                 movable=False,
                 switch_style_on_first_click=False,
@@ -875,6 +879,7 @@ class _DraggableTile(QGraphicsObject):
         initial_color: str = "#ffffff",
         active_color: str = "#a5d6a7",
         edge_color: str = "#c8cdd4",
+        font_color: str = "#444a55",
         font_size: int = 17,
         movable: bool = True,
         switch_style_on_first_click: bool = False,
@@ -887,6 +892,7 @@ class _DraggableTile(QGraphicsObject):
         self._initial_color = QColor(initial_color)
         self._active_color = QColor(active_color)
         self._edge_color = QColor(edge_color)
+        self._font_color = QColor(font_color)
         self._font_size = max(1, int(font_size))
         self._movable = movable
         self._switch_style_on_first_click = switch_style_on_first_click
@@ -918,8 +924,31 @@ class _DraggableTile(QGraphicsObject):
         painter.setBrush(fill)
         painter.drawRoundedRect(self._rect, 14, 14)
 
-        painter.setPen(QColor("#444a55"))
-        painter.setFont(QFont("Helvetica", self._font_size, QFont.Weight.DemiBold))
+        center_line = QPen(self._edge_color, 1.2)
+        if use_initial_style and not self._is_active:
+            center_line.setStyle(Qt.PenStyle.DotLine)
+        painter.setPen(center_line)
+        center_x = self._rect.center().x()
+        font = QFont("Helvetica", self._font_size, QFont.Weight.DemiBold)
+        painter.setFont(font)
+        text_rect = painter.fontMetrics().boundingRect(
+            self._rect.toRect(),
+            int(Qt.AlignmentFlag.AlignCenter),
+            self.name,
+        )
+        gap_margin = max(3.0, self._rect.height() * 0.06)
+        upper_end = max(self._rect.top(), text_rect.top() - gap_margin)
+        lower_start = min(self._rect.bottom(), text_rect.bottom() + gap_margin)
+        painter.drawLine(
+            QPointF(center_x, self._rect.top()),
+            QPointF(center_x, upper_end),
+        )
+        painter.drawLine(
+            QPointF(center_x, self._rect.bottom()),
+            QPointF(center_x, lower_start),
+        )
+
+        painter.setPen(self._font_color)
         painter.drawText(self._rect, Qt.AlignmentFlag.AlignCenter, self.name)
 
     def mousePressEvent(self, event) -> None:
