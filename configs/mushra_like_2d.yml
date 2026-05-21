@@ -6,9 +6,6 @@ window_size: [1100, 550]
 # Use 100% for maximally possible size.
 rating_area_size: [100, 100]
 
-# Print verbose info for debugging
-verbose: True
-
 # overall color theme
 fontcolor: "#e8eaed"
 window_background_color: "#2b2b2b"

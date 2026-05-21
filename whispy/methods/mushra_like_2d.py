@@ -43,7 +43,8 @@ class MushraLike2D(QMainWindow):
         stimuli_handler: Optional = None,
         attributes: Optional[str] = None,
         mushra_like_2d: Optional[str] = None,
-        block_until_closed: bool = True,
+        block_until_closed: Optional[bool] = True,
+        verbose: Optional[bool] = False
     ) -> None:
 
         # QApplication must exist before any QWidget is constructed.
@@ -108,7 +109,7 @@ class MushraLike2D(QMainWindow):
 
         # initialize QT parameters --------------------------------------------
         # set global parameters
-        self._verbose = bool(mushra_like_2d["verbose"])
+        self._verbose = verbose
 
         # set window size
         window_size = mushra_like_2d["window_size"]
