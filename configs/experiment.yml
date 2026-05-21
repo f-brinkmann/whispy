@@ -27,6 +27,6 @@
   - block_name: Block 2
   - section:
       section_name: Section 3
-      attribute: coloration_bright_dark
+      attribute: tone_color_bright-dark
       reference: 1
       test: [2, 3]

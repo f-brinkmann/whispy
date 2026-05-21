@@ -14,10 +14,10 @@ difference:
   values: [0, .25, .5, .75, 1]
   neutral_value: 0
 
-coloration_bright_dark:
+tone_color_bright-dark:
   task: |
     Rate the
-    **Tone colour bright-dark**
+    **Tone color bright-dark**
   description: Timbral impression which is determined by the ratio of high to low frequency components
   labels: [darker, null, null, null, brighter]
   values: [-1, -.5, 0, .5, 1]
