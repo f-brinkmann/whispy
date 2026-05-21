@@ -1,4 +1,4 @@
-from .stimuli_handler import StimuliHandler, SounddeviceHandler
+from .stimuli import StimuliHandler, SounddeviceHandler
 
 __all__ = [
     'StimuliHandler',
