@@ -1,3 +1,4 @@
+# ---------------------------------- Look ----------------------------------- #
 # Window size. Either [pixels_x, pixels_y] or "fullscreen"
 window_size: [1100, 550]
 
@@ -23,12 +24,6 @@ button_size: 40
 button_fontsize: 16
 button_spacing: 8
 
-# Specify if the reference should be played
-# automatically, after the test conditions
-# and the delay of the auto play in seconds
-autoplay_reference: True
-autoplay_delay: .1
-
 # The task is a string displayed on top of the GUI
 # This defines the fontsize and the space between
 # the task and the rating interface in pixel
@@ -37,3 +32,10 @@ task_spacing: 24
 
 # Size for all other text
 fontsize: 12
+
+# -------------------------------- Behaviour -------------------------------- #
+# Specify if the reference should be played
+# automatically, after the test conditions
+# and the delay of the auto play in seconds
+autoplay_reference: True
+autoplay_delay: .1
