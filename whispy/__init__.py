@@ -1,11 +1,11 @@
-from . import experiments
+from .experiment_scheduler import ExperimentScheduler
 from . import gui
 from . import interfaces
 from . import methods
 from . import utils
 
 __all__ = [
-    'experiments',
+    'ExperimentScheduler',
     'gui',
     'interfaces',
     'methods',

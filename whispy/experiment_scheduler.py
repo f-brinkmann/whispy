@@ -8,8 +8,85 @@ from typing import Optional, List, Dict
 # Required for loading the default configs
 FILEPATH = os.path.dirname(os.path.abspath(__file__))
 
+class ExperimentScheduler():
+    """
+    Generate a randomized experimental schedule from configuration.
 
-def course(
+    Parameters
+    ----------
+    experiment : str or None, optional
+        Path to the experiment configuration file. If ``None``, the default
+            ``configs/experiment.yml`` from this package is used.
+    randomize_blocks : bool, optional
+        Whether to randomize the order of blocks of the experiment. The default
+        is ``True``.
+    randomize_sections : bool, optional
+        Whether to randomize the order of sections within blocks of the
+        experiment. The default is ``True``.
+    randomize_conditions : bool, optional
+        Whether to randomize the order of conditions within sections of the
+        experiment. The default is ``True``.
+    max_conditions_per_gui : int, optional
+        Maximum number of conditions to display per GUI screen. The default is
+        ``7``.
+    random_seed : int, optional
+        Seed for random number generator. If ``None``, the current internet
+        time in seconds ``time.time()`` is used.
+
+    Returns
+    -------
+    schedule:
+        Experimental schedule class. Contains the schedule in
+        `schedule.schedule` and can be iterated to run the experiment.
+
+    Examples
+    --------
+    .. code-block:: python
+
+        import whispy
+
+        # create the scheduler
+        scheduler = whispy.ExperimentScheduler()
+
+        # initalize results
+        results = None
+
+        # iterate over rating screens
+        for screen in scheduler:
+
+            # verbose information of current conditions
+            print(screen)
+
+            # run a drag and drop MUSHRA-like experiment
+            mushra_like = whispy.DragAndDropMushra(screen)
+
+            # update results
+            results = mushra_like.get_results(results)
+    """
+
+    def __init__(
+            self,
+            experiment: Optional[str] = None,
+            randomize_blocks: Optional[bool] = True,
+            randomize_sections: Optional[bool] = True,
+            randomize_conditions: Optional[bool] = True,
+            max_conditions_per_gui: Optional[int] = 7,
+            random_seed: Optional[int] = None
+        ):
+
+        self.schedule = _course(
+            experiment,
+            randomize_blocks,
+            randomize_sections,
+            randomize_conditions,
+            max_conditions_per_gui,
+            random_seed)
+
+    def __iter__(self):
+        return iter(self.schedule)
+
+
+def _course(
         experiment: Optional[str] = None,
         randomize_blocks: Optional[bool] = True,
         randomize_sections: Optional[bool] = True,
@@ -50,7 +127,7 @@ def course(
     # load config
     if experiment is None:
         experiment = os.path.join(
-                FILEPATH, '..', '..', 'configs', 'experiment.yml')
+                FILEPATH, '..', 'configs', 'experiment.yml')
 
     experiment = read_config(experiment)
 
