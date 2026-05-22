@@ -6,6 +6,7 @@ from typing import Optional
 from whispy.utils import read_config
 
 import pyfar as pf
+import numpy as np
 import sounddevice as sd
 import os
 
@@ -45,7 +46,8 @@ class SoundDevice(StimuliHandler):
         Raises
         ------
         ValueError
-            If loaded stimuli do not share the same sampling rate.
+            If loaded stimuli are clipping (maximum absolute value equals 1) or
+            do not share the same sampling rate.
         """
 
         # load config file
@@ -69,9 +71,18 @@ class SoundDevice(StimuliHandler):
 
         for s_id in self.stimuli.keys():
 
+            # load file
+            file = self.stimuli[s_id]["file"]
             signal = pf.io.read_audio(os.path.join(
-                base_dir, self.stimuli[s_id]["file"]))
+                base_dir, file))
 
+            # check for clipping
+            if np.max(np.abs(signal.time)) >= 1:
+                raise ValueError((
+                    f'detected clipping in {file} '
+                    '(maximum absolute amplitude equals 1)'))
+
+            # check for equal sampling rate
             if self.sampling_rate is None:
                 self.sampling_rate = signal.sampling_rate
             elif signal.sampling_rate != self.sampling_rate:
