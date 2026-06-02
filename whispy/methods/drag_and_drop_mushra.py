@@ -40,6 +40,7 @@ class DragAndDropMUSHRA(QMainWindow):
 
     def __init__(
         self,
+        *,
         screen: Optional[Dict] = None,
         stimuli_handler: Optional[StimuliHandler] = None,
         attributes: Optional[str] = None,
