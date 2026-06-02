@@ -44,7 +44,7 @@ class DragAndDropMUSHRA(QMainWindow):
         screen: Optional[Dict] = None,
         stimuli_handler: Optional[StimuliHandler] = None,
         attributes: Optional[str] = None,
-        mushra_like_2d: Optional[str] = None,
+        drag_and_drop_mushra: Optional[str] = None,
         block_until_closed: Optional[bool] = True,
         verbose: Optional[bool] = False
     ) -> None:
@@ -97,11 +97,11 @@ class DragAndDropMUSHRA(QMainWindow):
         attributes = read_config(attributes)
 
         # read GUI config (use default if not provided)
-        if mushra_like_2d is None:
-            mushra_like_2d = os.path.join(
-                FILEPATH, "..", "..", "configs", "mushra_like_2d.yml")
+        if drag_and_drop_mushra is None:
+            drag_and_drop_mushra = os.path.join(
+                FILEPATH, "..", "..", "configs", "drag_and_drop_mushra.yml")
 
-        mushra_like_2d = read_config(mushra_like_2d)
+        drag_and_drop_mushra = read_config(drag_and_drop_mushra)
 
         # parse config data to get parameters for current task ----------------
         # current attribute and rating scale
@@ -120,25 +120,25 @@ class DragAndDropMUSHRA(QMainWindow):
         self._verbose = verbose
 
         # set window size
-        window_size = mushra_like_2d["window_size"]
+        window_size = drag_and_drop_mushra["window_size"]
         fullscreen = isinstance(window_size, str) and \
             window_size.strip().lower() == "fullscreen"
 
         if fullscreen:
             geo = QApplication.primaryScreen().availableGeometry()
             # Shallow-copy the config so the caller's dict is not mutated.
-            mushra_like_2d = dict(mushra_like_2d)
-            mushra_like_2d["window_size"] = [geo.width(), geo.height()]
+            drag_and_drop_mushra = dict(drag_and_drop_mushra)
+            drag_and_drop_mushra["window_size"] = [geo.width(), geo.height()]
         else:
-            self.resize(int(mushra_like_2d["window_size"][0]),
-                        int(mushra_like_2d["window_size"][1]))
+            self.resize(int(drag_and_drop_mushra["window_size"][0]),
+                        int(drag_and_drop_mushra["window_size"][1]))
 
         self._continue_info_window: Optional[InfoWindow] = None
         self._wait_loop: Optional[QEventLoop] = None
 
         container = QWidget(self)
         container.setStyleSheet(
-            f"background-color: {mushra_like_2d['window_background_color']};"
+            f"background-color: {drag_and_drop_mushra['window_background_color']};"
         )
         layout = QVBoxLayout(container)
         layout.setContentsMargins(22, 22, 22, 22)
@@ -152,7 +152,7 @@ class DragAndDropMUSHRA(QMainWindow):
             neutral_value=neutral_value,
             values=values,
             labels=labels,
-            mushra_like_2d=mushra_like_2d,
+            drag_and_drop_mushra=drag_and_drop_mushra,
             parent=container,
         )
         layout.addWidget(self.drag_area)
@@ -295,18 +295,18 @@ class _MainWindow(QWidget):
         neutral_value: float = 0,
         values: Optional[List[float]] = None,
         labels: Optional[List[Optional[str]]] = None,
-        mushra_like_2d: Optional[Dict] = None,
+        drag_and_drop_mushra: Optional[Dict] = None,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
-        if mushra_like_2d is None:
-            raise ValueError("mushra_like_2d config is required")
+        if drag_and_drop_mushra is None:
+            raise ValueError("drag_and_drop_mushra config is required")
 
-        task_fontsize = mushra_like_2d["task_fontsize"]
-        task_spacing = mushra_like_2d["task_spacing"]
-        fontsize = mushra_like_2d["fontsize"]
-        button_fontsize = mushra_like_2d["button_fontsize"]
-        fontcolor = mushra_like_2d["fontcolor"]
+        task_fontsize = drag_and_drop_mushra["task_fontsize"]
+        task_spacing = drag_and_drop_mushra["task_spacing"]
+        fontsize = drag_and_drop_mushra["fontsize"]
+        button_fontsize = drag_and_drop_mushra["button_fontsize"]
+        fontcolor = drag_and_drop_mushra["fontcolor"]
 
         self._description = description
         self._fontsize = max(1, int(fontsize))
@@ -361,7 +361,7 @@ class _MainWindow(QWidget):
             neutral_value=neutral_value,
             values=values,
             labels=labels,
-            mushra_like_2d=mushra_like_2d,
+            drag_and_drop_mushra=drag_and_drop_mushra,
             parent=self,
         )
         layout.addWidget(self.view, alignment=Qt.AlignmentFlag.AlignHCenter)
@@ -437,28 +437,28 @@ class _RatingArea(QGraphicsView):
         neutral_value: float = 0,
         values: Optional[List[float]] = None,
         labels: Optional[List[Optional[str]]] = None,
-        mushra_like_2d: Optional[Dict] = None,
+        drag_and_drop_mushra: Optional[Dict] = None,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
 
-        if mushra_like_2d is None:
-            raise ValueError("mushra_like_2d config is required")
+        if drag_and_drop_mushra is None:
+            raise ValueError("drag_and_drop_mushra config is required")
 
-        button_size = mushra_like_2d["button_size"]
-        button_fontsize = mushra_like_2d["button_fontsize"]
-        button_spacing = mushra_like_2d["button_spacing"]
-        rating_area_background_color = mushra_like_2d["rating_area_background_color"]
-        window_background_color = mushra_like_2d["window_background_color"]
-        edge_color = mushra_like_2d["edge_color"]
-        button_color_initial = mushra_like_2d["button_color_initial"]
-        button_color_clicked = mushra_like_2d["button_color_clicked"]
-        button_color_active = mushra_like_2d["button_color_active"]
-        button_fontcolor = mushra_like_2d["button_fontcolor"]
-        autoplay_reference = mushra_like_2d["autoplay_reference"]
-        autoplay_delay = mushra_like_2d["autoplay_delay"]
-        window_size = mushra_like_2d["window_size"]
-        rating_area_size = mushra_like_2d["rating_area_size"]
+        button_size = drag_and_drop_mushra["button_size"]
+        button_fontsize = drag_and_drop_mushra["button_fontsize"]
+        button_spacing = drag_and_drop_mushra["button_spacing"]
+        rating_area_background_color = drag_and_drop_mushra["rating_area_background_color"]
+        window_background_color = drag_and_drop_mushra["window_background_color"]
+        edge_color = drag_and_drop_mushra["edge_color"]
+        button_color_initial = drag_and_drop_mushra["button_color_initial"]
+        button_color_clicked = drag_and_drop_mushra["button_color_clicked"]
+        button_color_active = drag_and_drop_mushra["button_color_active"]
+        button_fontcolor = drag_and_drop_mushra["button_fontcolor"]
+        autoplay_reference = drag_and_drop_mushra["autoplay_reference"]
+        autoplay_delay = drag_and_drop_mushra["autoplay_delay"]
+        window_size = drag_and_drop_mushra["window_size"]
+        rating_area_size = drag_and_drop_mushra["rating_area_size"]
 
         self._num_buttons = max(1, num_buttons)
         self._reference = bool(reference)
