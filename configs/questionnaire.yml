@@ -1,0 +1,76 @@
+# ---------------------------------- Look ----------------------------------- #
+ui:
+# Window size. Either [pixels_x, pixels_y] or "fullscreen"
+  window_size: [1100, 550]
+  # Questionnaire size.
+  # Percentage with respect to window size.
+  # Use 100% for maximally possible size.
+  questionnaire_size: [100, 100]
+  # If True Sections and questions are enumerated
+  enumerate: True
+  # Spacing between sections and questions in pixel
+  question_spacing: 14
+  section_spacing: 20
+  # width of response boxes in characters
+  width_numeric_response: 10
+  width_text_response: 50
+  text_box_number_of_lines: 5
+  # fontsizes and colors
+  section_fontsize: 16
+  question_fontsize: 12
+  fontcolor: "#e8eaed"
+  window_background_color: "#2b2b2b"
+  response_boxes_color: "#5a5a5a"
+
+# ------------------------------ Questionnaire ------------------------------ #
+# The questionnaire can have an arbitrary number of sections. Each section
+# can have an arbitrary number of questions. Sections are intended to provide
+# a visual structure.
+#
+# The example below shows how to configure each question type. All `required`
+# questions have to be answered.
+questionnaire:
+  - section: first section
+    prompt: The first section starts here
+    questions:
+      # This is a single choice question, with an optional response field
+      # triggered by the last radio button
+      - question: favorite_animal
+        prompt: What is your favorite animal?
+        type: single_choice
+        required: true
+        options:
+          - Butterfly
+          - T-Rex
+          - Sloth
+          - Prefer not to disclose
+        other_question:
+          other_question_value: Prefer not to disclose
+          prompt: Is it a different animal? Type it below
+          type: text
+
+      # This is a question with a numeric response
+      - question: prime_number
+        prompt: Which prime number do you like the most?
+        type: numeric
+        required: true
+
+  - section: second section
+    prompt: The second section starts here
+    questions:
+      # This is a multiple choice question.
+      - question: food
+        prompt: Which of the below would you like for dinner tonight?
+        type: multiple_choice
+        required: true
+        options:
+          - Pizza
+          - Pasta
+          - Salad
+          - Water
+          - Wine
+      # And this a question with a free text response
+      - question: joke
+        prompt: What's your favorite joke?
+        type: text_box
+        required: true
