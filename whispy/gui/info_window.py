@@ -24,11 +24,13 @@ class InfoWindow(QWidget):
     def __init__(
         self,
         info_text: str,
+        *,
         fontsize: int = 12,
         fontcolor: str = "#FFFFFF",
         minimum_width: int=320,
-        blocking: bool = True,
         parent: Optional[QWidget] = None,
+        blocking: bool = True,
+        debug: bool = False,
     ) -> None:
         # QApplication must exist before any QWidget is constructed.
         # sys.argv[:1] avoids passing Jupyter/IPython kernel arguments to Qt.
@@ -49,9 +51,14 @@ class InfoWindow(QWidget):
         super().__init__(parent)
         self.setWindowTitle("")
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
+        self._debug = debug
+        self._allow_close = bool(debug)
         self._fontsize = max(1, int(fontsize))
         self._minimum_width = max(1, int(minimum_width))
         self._wait_loop: Optional[QEventLoop] = None
+
+        if not self._debug:
+            self.setWindowFlag(Qt.WindowType.WindowCloseButtonHint, False)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -70,7 +77,7 @@ class InfoWindow(QWidget):
 
         self.continue_button = QPushButton("Continue", self)
         self._setup_control_button(self.continue_button, self._fontsize)
-        self.continue_button.clicked.connect(self.close)
+        self.continue_button.clicked.connect(self._on_continue_clicked)
 
         controls_layout.addWidget(self.continue_button)
         layout.addLayout(controls_layout)
@@ -123,7 +130,14 @@ class InfoWindow(QWidget):
 
         self._wait_loop.exec()
 
+    def _on_continue_clicked(self) -> None:
+        self._allow_close = True
+        self.close()
+
     def closeEvent(self, event: QCloseEvent) -> None:
+        if not self._allow_close:
+            event.ignore()
+            return
         if self._wait_loop is not None and self._wait_loop.isRunning():
             self._wait_loop.quit()
         # Remove from orphaned windows registry if present
