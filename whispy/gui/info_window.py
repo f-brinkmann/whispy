@@ -27,7 +27,7 @@ class InfoWindow(QWidget):
         fontsize: int = 12,
         fontcolor: str = "#FFFFFF",
         minimum_width: int=320,
-        block_until_closed: bool = True,
+        blocking: bool = True,
         parent: Optional[QWidget] = None,
     ) -> None:
         # QApplication must exist before any QWidget is constructed.
@@ -84,7 +84,7 @@ class InfoWindow(QWidget):
         if parent is None:
             _orphaned_windows.append(self)
 
-        if block_until_closed:
+        if blocking:
             self.wait_until_closed()
 
     @staticmethod

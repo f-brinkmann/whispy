@@ -45,7 +45,7 @@ class DragAndDropMUSHRA(QMainWindow):
         stimuli_handler: Optional[StimuliHandler] = None,
         attributes: Optional[str] = None,
         drag_and_drop_mushra: Optional[str] = None,
-        block_until_closed: Optional[bool] = True,
+        blocking: Optional[bool] = True,
         debug: Optional[bool] = False
     ) -> None:
 
@@ -176,7 +176,7 @@ class DragAndDropMUSHRA(QMainWindow):
 
         self.drag_area.continueClicked.connect(self._on_continue_clicked)
         # Block code execution outside this class until the window is closed
-        if block_until_closed:
+        if blocking:
             self.wait_until_closed()
 
     def _on_tile_pressed(self, tile_name: str, pos: QPointF) -> None:
@@ -232,7 +232,7 @@ class DragAndDropMUSHRA(QMainWindow):
             ),
             fontsize=self.drag_area._fontsize,
             fontcolor=self.drag_area._fontcolor,
-            block_until_closed=False,
+            blocking=False,
         )
 
     def get_results(
@@ -403,7 +403,7 @@ class _MainWindow(QWidget):
             info_text=self._description,
             fontsize=self._fontsize,
             fontcolor=self._fontcolor,
-            block_until_closed=False,
+            blocking=False,
         )
 
     def _on_stop_button_clicked(self) -> None:

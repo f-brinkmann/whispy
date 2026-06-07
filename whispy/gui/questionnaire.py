@@ -51,14 +51,14 @@ class Questionnaire(QMainWindow):
     questionnaire : str or None, optional
         Path to the questionnaire YAML file. If ``None``, the default
         ``configs/questionnaire.yml`` file is used.
-    block_until_closed : bool, optional
+    blocking : bool, optional
         If ``True``, block execution until the window is closed.
     """
 
     def __init__(self,
                  *,
                  questionnaire: Optional[str] = None,
-                 block_until_closed: bool = True) -> None:
+                 blocking: bool = True) -> None:
         global _qapp
         if QApplication.instance() is None:
             _qapp = QApplication(sys.argv[:1])
@@ -110,7 +110,7 @@ class Questionnaire(QMainWindow):
         self.raise_()
         self.activateWindow()
 
-        if block_until_closed:
+        if blocking:
             self.wait_until_closed()
 
     def _apply_window_size(self) -> None:
@@ -166,7 +166,7 @@ class Questionnaire(QMainWindow):
                 ),
                 fontsize=font_size,
                 fontcolor=font_color,
-                block_until_closed=False,
+                blocking=False,
             )
             return
 
