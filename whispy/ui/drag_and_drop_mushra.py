@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from whispy.gui import InfoWindow
+from .info_window import InfoWindow
 from whispy.interfaces import StimuliHandler, SoundDevice
 from whispy.utils import read_config
 
