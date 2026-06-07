@@ -46,7 +46,7 @@ class DragAndDropMUSHRA(QMainWindow):
         attributes: Optional[str] = None,
         drag_and_drop_mushra: Optional[str] = None,
         block_until_closed: Optional[bool] = True,
-        verbose: Optional[bool] = False
+        debug: Optional[bool] = False
     ) -> None:
 
         # QApplication must exist before any QWidget is constructed.
@@ -117,7 +117,7 @@ class DragAndDropMUSHRA(QMainWindow):
 
         # initialize QT parameters --------------------------------------------
         # set global parameters
-        self._verbose = verbose
+        self._debug = debug
 
         # set window size
         window_size = drag_and_drop_mushra["window_size"]
@@ -180,31 +180,31 @@ class DragAndDropMUSHRA(QMainWindow):
             self.wait_until_closed()
 
     def _on_tile_pressed(self, tile_name: str, pos: QPointF) -> None:
-        if self._verbose:
+        if self._debug:
             print(f"pressed: {tile_name} at ({pos.x():.2f}, {pos.y()})")
 
     def _on_tile_released(self, tile_name: str, pos: QPointF) -> None:
-        if self._verbose:
+        if self._debug:
             print(f"released: {tile_name} at ({pos.x():.2f}, {pos.y()})")
 
     def _on_tile_clicked(self, tile_name: str, pos: QPointF) -> None:
-        if self._verbose:
+        if self._debug:
             print(f"clicked: {tile_name} at ({pos.x():.2f}, {pos.y()})")
 
     def _on_tile_activated(self, tile_name: str) -> None:
         stimulus_name = self._get_stimulus_name(tile_name)
         self.stimuli_handler.play(stimulus_name)
-        if self._verbose:
+        if self._debug:
             print(f"activated: {tile_name}, playing: {stimulus_name}")
 
     def _on_tile_deactivated(self, tile_name: str) -> None:
         stimulus_name = self._get_stimulus_name(tile_name)
         self.stimuli_handler.stop(stimulus_name)
-        if self._verbose:
+        if self._debug:
             print(f"deactivated: {tile_name}, stopped: {stimulus_name}")
 
     def _on_stop_clicked(self) -> None:
-        if self._verbose:
+        if self._debug:
             print("Stop clicked")
 
     def _get_stimulus_name(self, tile_name):
@@ -220,7 +220,7 @@ class DragAndDropMUSHRA(QMainWindow):
             self.drag_area.view.deactivate_active_button()
             self.close()
 
-            if self._verbose:
+            if self._debug:
                 print(self.get_results())
 
             return
