@@ -38,8 +38,6 @@ class InfoWindow(QWidget):
         Minimum width for the content block in pixel.
     center : bool, optional
         If ``True``, center the entire text and continue button in the window.
-    parent : QWidget or None, optional
-        Parent widget.
     blocking : bool, optional
         If True, block until the window is closed.
     debug : bool, optional
@@ -56,7 +54,6 @@ class InfoWindow(QWidget):
         fullscreen: bool = False,
         minimum_width: int=320,
         center: bool = True,
-        parent: Optional[QWidget] = None,
         blocking: bool = True,
         debug: bool = False,
     ) -> None:
@@ -76,7 +73,7 @@ class InfoWindow(QWidget):
         except Exception:
             pass
 
-        super().__init__(parent)
+        super().__init__()
         self.setWindowTitle("")
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
         self._debug = debug
@@ -140,9 +137,8 @@ class InfoWindow(QWidget):
         self.raise_()
         self.activateWindow()
 
-        # If this window has no parent, register it globally to prevent garbage collection
-        if parent is None:
-            _orphaned_windows.append(self)
+        # Keep top-level windows alive even if the caller does not store them.
+        _orphaned_windows.append(self)
 
         if blocking:
             self.wait_until_closed()
