@@ -6,7 +6,7 @@ from typing import Optional
 
 from PyQt6.QtCore import QEventLoop, Qt
 from PyQt6.QtGui import QCloseEvent, QColor, QFont, QTextDocument
-from PyQt6.QtWidgets import QApplication, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget
 
 
 # Module-level QApplication reference — kept alive for the process lifetime so
@@ -20,6 +20,32 @@ _orphaned_windows: list[InfoWindow] = []
 
 
 class InfoWindow(QWidget):
+    """
+    Display a popup window to render markdown text.
+
+    Parameters
+    ----------
+    info_text : str
+        Markdown text to display.
+    fontsize : int, optional
+        Font size for the text and button.
+    fontcolor : str, optional
+        Text color.
+    fullscreen : bool, optional
+        If ``True``, show the window fullscreen using the primary screen
+        geometry.
+    minimum_width : int, optional
+        Minimum width for the content block in pixel.
+    center : bool, optional
+        If ``True``, center the entire text and continue button in the window.
+    parent : QWidget or None, optional
+        Parent widget.
+    blocking : bool, optional
+        If True, block until the window is closed.
+    debug : bool, optional
+        If False, the window close button is disabled and Continue is the
+        only way to close the window.
+    """
 
     def __init__(
         self,
@@ -27,7 +53,9 @@ class InfoWindow(QWidget):
         *,
         fontsize: int = 12,
         fontcolor: str = "#FFFFFF",
+        fullscreen: bool = False,
         minimum_width: int=320,
+        center: bool = True,
         parent: Optional[QWidget] = None,
         blocking: bool = True,
         debug: bool = False,
@@ -53,6 +81,8 @@ class InfoWindow(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, False)
         self._debug = debug
         self._allow_close = bool(debug)
+        self._fullscreen = fullscreen
+        self._center = center
         self._fontsize = max(1, int(fontsize))
         self._minimum_width = max(1, int(minimum_width))
         self._wait_loop: Optional[QEventLoop] = None
@@ -61,29 +91,52 @@ class InfoWindow(QWidget):
             self.setWindowFlag(Qt.WindowType.WindowCloseButtonHint, False)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        self.info_label = QLabel(self._format_markdown(info_text), self)
+        self._content_widget = QWidget(self)
+        self._content_widget.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        content_layout = QVBoxLayout(self._content_widget)
+        content_layout.setContentsMargins(10, 10, 10, 10)
+        content_layout.setSpacing(10)
+
+        self.info_label = QLabel(self._format_markdown(info_text), self._content_widget)
         self.info_label.setTextFormat(Qt.TextFormat.MarkdownText)
         self.info_label.setWordWrap(False)
         self.info_label.setFont(QFont("Helvetica", self._fontsize))
         self.info_label.setStyleSheet(f"color: {QColor(fontcolor).name()};")
 
-        layout.addWidget(self.info_label)
+        content_layout.addWidget(self.info_label)
 
         controls_layout = QHBoxLayout()
         controls_layout.addStretch(1)
 
-        self.continue_button = QPushButton("Continue", self)
+        self.continue_button = QPushButton("Continue", self._content_widget)
         self._setup_control_button(self.continue_button, self._fontsize)
         self.continue_button.clicked.connect(self._on_continue_clicked)
 
         controls_layout.addWidget(self.continue_button)
-        layout.addLayout(controls_layout)
+        content_layout.addLayout(controls_layout)
+
+        if self._center:
+            layout.addStretch(1)
+            layout.addWidget(self._content_widget, 0, Qt.AlignmentFlag.AlignHCenter)
+            layout.addStretch(1)
+        else:
+            layout.addWidget(
+                self._content_widget,
+                0,
+                Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft,
+            )
+            layout.setAlignment(self._content_widget, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
 
         self._resize_to_content()
-        self.show()
+        if self._fullscreen:
+            geo = QApplication.primaryScreen().availableGeometry()
+            self.resize(geo.width(), geo.height())
+            self.showFullScreen()
+        else:
+            self.show()
         self.raise_()
         self.activateWindow()
 
@@ -112,14 +165,17 @@ class InfoWindow(QWidget):
         text_width = max(math.ceil(doc.idealWidth()), label_hint.width())
         text_height = max(math.ceil(doc.size().height()), label_hint.height())
 
-        margins = self.layout().contentsMargins()
-        spacing = self.layout().spacing()
+        margins = self._content_widget.layout().contentsMargins()
+        spacing = self._content_widget.layout().spacing()
         button_width = self.continue_button.width()
         button_height = self.continue_button.height()
 
         width = max(text_width, button_width) + margins.left() + margins.right() + 8
         height = text_height + button_height + margins.top() + margins.bottom() + spacing + 8
-        self.setFixedSize(max(self._minimum_width, width), max(30, height))
+        self._content_widget.setFixedSize(max(self._minimum_width, width), max(30, height))
+
+        if not self._fullscreen:
+            self.adjustSize()
 
     def wait_until_closed(self) -> None:
         if not self.isVisible():
