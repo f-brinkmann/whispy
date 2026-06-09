@@ -270,6 +270,8 @@ class _QuestionnaireMain(QWidget):
             section_label = QLabel(section_label_text, content)
             section_label.setFont(section_font)
             section_label.setWordWrap(True)
+            section_label.setTextFormat(Qt.TextFormat.MarkdownText)
+            section_label.setText(section_label_text.replace("\n", "  \n"))
             section_label.setStyleSheet(f"color: {font_color};")
             form_layout.addWidget(section_label)
 
@@ -360,6 +362,8 @@ class _BaseQuestionWidget(QWidget):
 
         self.prompt_label = QLabel(self.prompt, self)
         self.prompt_label.setWordWrap(True)
+        self.prompt_label.setTextFormat(Qt.TextFormat.MarkdownText)
+        self.prompt_label.setText(self.prompt.replace("\n", "  \n"))
         self.prompt_label.setStyleSheet(f"color: {font_color};")
         self.prompt_label.setFont(QFont("Helvetica", question_font_size))
         layout.addWidget(self.prompt_label)
