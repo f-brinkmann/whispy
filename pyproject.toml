@@ -29,6 +29,7 @@ dependencies = [
     "PyQt6",
     "pyyaml",
     "sounddevice",
+    "pytest"
 ]
 
 [tool.setuptools]

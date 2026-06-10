@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from whispy.utils._utils import format_markdown
+
 import math
 import sys
 from typing import Optional
@@ -97,7 +99,7 @@ class InfoWindow(QWidget):
         content_layout.setContentsMargins(10, 10, 10, 10)
         content_layout.setSpacing(10)
 
-        self.info_label = QLabel(self._format_markdown(info_text), self._content_widget)
+        self.info_label = QLabel(format_markdown(info_text), self._content_widget)
         self.info_label.setTextFormat(Qt.TextFormat.MarkdownText)
         self.info_label.setWordWrap(False)
         self.info_label.setFont(QFont("Helvetica", self._fontsize))
@@ -142,10 +144,6 @@ class InfoWindow(QWidget):
 
         if blocking:
             self.wait_until_closed()
-
-    @staticmethod
-    def _format_markdown(text: str) -> str:
-        return text.replace("\n", "  \n")
 
     def _resize_to_content(self) -> None:
         doc = QTextDocument()

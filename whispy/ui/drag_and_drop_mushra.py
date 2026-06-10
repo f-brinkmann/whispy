@@ -3,6 +3,7 @@ from __future__ import annotations
 from .info_window import InfoWindow
 from whispy.interfaces import StimuliHandler, SoundDevice
 from whispy.utils import read_config
+from whispy.utils._utils import format_markdown
 
 import pandas
 import os
@@ -329,7 +330,7 @@ class _MainWindow(QWidget):
         task_row.setContentsMargins(0, 0, 0, 0)
         task_row.setSpacing(8)
 
-        self.task_label = QLabel(task.replace("\n", "  \n"), self)
+        self.task_label = QLabel(format_markdown(task), self)
         self.task_label.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
         self.task_label.setWordWrap(True)
         self.task_label.setTextFormat(Qt.TextFormat.MarkdownText)
