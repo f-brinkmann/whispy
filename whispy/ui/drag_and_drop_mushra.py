@@ -232,10 +232,7 @@ class DragAndDropMUSHRA(QMainWindow):
             return
 
         self._continue_info_window = InfoWindow(
-            info_text=(
-                "Please activate all buttons before continuing.\n"
-                "Click each tile at least once, then press Continue again."
-            ),
+            info_text="You have to listen to each sound at least once.",
             fontsize=self.drag_area._fontsize,
             fontcolor=self.drag_area._fontcolor,
             blocking=False,
