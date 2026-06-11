@@ -138,10 +138,15 @@ class _BaseUIWindow(QMainWindow):
         width: Optional[int] = None,
         height: Optional[int] = None,
         fullscreen: bool = False,
+        background_color = None,
     ) -> None:
         """Show and activate the host window using the resolved presentation mode."""
         if width is not None and height is not None:
             self._host.resize(width, height)
+
+        # Set window background color
+        if background_color:
+            self._host.setStyleSheet(f"background-color: {background_color};")
 
         if fullscreen:
             self._host.showFullScreen()

@@ -77,7 +77,7 @@ class InfoWindow(_BaseUIWindow):
         *,
         fontsize: int = 12,
         fontcolor: str = "#FFFFFF",
-        window_background_color: str = "#2b2b2b",
+        background_color: str = "#2b2b2b",
         fullscreen: bool = False,
         minimum_width: int=320,
         center: bool = True,
@@ -100,7 +100,7 @@ class InfoWindow(_BaseUIWindow):
 
         self._content_widget = QWidget()
         self._content_widget.setStyleSheet(
-            f"background-color: {window_background_color};"
+            f"background-color: {background_color};"
         )
         content_layout = QVBoxLayout(self._content_widget)
         content_layout.setContentsMargins(10, 10, 10, 10)
@@ -131,7 +131,7 @@ class InfoWindow(_BaseUIWindow):
 
         self.continue_button = QPushButton("Continue")
         style_qpushbutton(self.continue_button, fontsize,
-                          fontcolor, window_background_color)
+                          fontcolor, background_color)
         self.continue_button.clicked.connect(self._on_continue_clicked)
 
         controls_layout.addWidget(self.continue_button)
@@ -159,7 +159,9 @@ class InfoWindow(_BaseUIWindow):
         if parent is None:
             if self._fullscreen:
                 width, height = self._primary_screen_size()
-                self._show_host_window(width=width, height=height, fullscreen=True)
+                self._show_host_window(
+                    width=width, height=height, fullscreen=True,
+                    background_color=background_color)
             else:
                 self._show_host_window()
                 self._center_on_screen()
