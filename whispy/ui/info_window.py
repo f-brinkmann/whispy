@@ -21,6 +21,29 @@ _qapp: Optional[QApplication] = None
 _orphaned_windows: list[InfoWindow] = []
 
 _SCREEN_MARGIN_FACTOR = 0.9
+_SCROLL_WIDTH_MARGIN_FACTOR = 1.1
+_PERSISTENT_SCROLLBAR_STYLE = """
+QScrollBar:vertical {
+    background: rgba(255, 255, 255, 0.15);
+    width: 6px;
+    margin: 0px;
+    border-radius: 6px;
+}
+QScrollBar::handle:vertical {
+    background: rgba(255, 255, 255, 0.70);
+    width: 6px;
+    min-height: 24px;
+    border-radius: 6px;
+}
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+"""
 
 
 class InfoWindow(QWidget):
@@ -106,6 +129,7 @@ class InfoWindow(QWidget):
         self._scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         self._scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self._scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self._scroll_area.verticalScrollBar().setStyleSheet(_PERSISTENT_SCROLLBAR_STYLE)
 
         self.info_label = QLabel(self._formatted_text, self._content_widget)
         self.info_label.setTextFormat(Qt.TextFormat.MarkdownText)
@@ -177,7 +201,8 @@ class InfoWindow(QWidget):
         available_text_width = max(1, max_width - width_padding)
         available_text_height = max(1, max_height - controls_height)
 
-        visible_text_width = min(text_width, available_text_width)
+        target_text_width = math.ceil(text_width * _SCROLL_WIDTH_MARGIN_FACTOR)
+        visible_text_width = min(target_text_width, available_text_width)
         visible_text_height = min(text_height, available_text_height)
         width = max(min_content_width, visible_text_width + width_padding)
         height = visible_text_height + controls_height
@@ -188,7 +213,7 @@ class InfoWindow(QWidget):
 
         self._content_widget.setFixedSize(width, height)
         self._scroll_area.setVerticalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAsNeeded if needs_vertical_scroll else Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOn if needs_vertical_scroll else Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
 
         if not self._fullscreen:
