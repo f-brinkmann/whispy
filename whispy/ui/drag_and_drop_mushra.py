@@ -193,11 +193,9 @@ class DragAndDropMUSHRA(_BaseUIWindow):
         return stimulus_name
 
     def _on_continue_clicked(self) -> None:
-        if self.drag_area.view.all_tiles_activated_once():
-            self.drag_area.view.deactivate_active_button()
+        if self.drag_area.view.all_tiles_activated_once() or self._debug:
 
-            if self._debug:
-                print(self.get_results())
+            self.drag_area.view.deactivate_active_button()
 
             # Quit the blocking loop so the caller regains control.
             # The window stays open; caller must call .close() explicitly.

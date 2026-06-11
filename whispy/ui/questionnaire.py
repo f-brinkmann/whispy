@@ -137,8 +137,11 @@ class Questionnaire(_BaseUIWindow):
         self.main.setFixedSize(target_w, target_h)
 
     def _on_continue_clicked(self) -> None:
+
+        # check if questionnaire is complete
         missing = self.main.get_missing_required_labels()
-        if missing:
+
+        if missing and not self._debug:
             font_size = max(1, int(self._ui_cfg["question_fontsize"]))
             font_color = str(self._ui_cfg["fontcolor"])
             preview = "\n".join(f"- {label}" for label in missing[:8])
