@@ -446,6 +446,11 @@ class _RatingArea(QGraphicsView):
             | QPainter.RenderHint.TextAntialiasing
             | QPainter.RenderHint.SmoothPixmapTransform
         )
+        # Prevent drag ghosting artifacts by repainting the full viewport.
+        self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.FullViewportUpdate)
+        self.setCacheMode(QGraphicsView.CacheModeFlag.CacheNone)
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
+        self.viewport().setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
         self.setFrameShape(QGraphicsView.Shape.NoFrame)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import os
 from typing import Optional
 
 from PyQt6.QtCore import QEventLoop, Qt, QTimer
@@ -39,6 +40,9 @@ def ensure_qapplication() -> QApplication:
 
     app = QApplication.instance()
     if app is None:
+        force_software_gl = os.environ.get("WHISPY_FORCE_SOFTWARE_GL", "0") == "1"
+        if force_software_gl:
+            QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseSoftwareOpenGL, True)
         # Avoid passing notebook/kernel arguments through to Qt.
         _qapp = QApplication(sys.argv[:1])
         app = _qapp
