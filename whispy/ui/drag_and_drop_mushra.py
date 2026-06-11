@@ -266,6 +266,7 @@ class _MainWindow(QWidget):
         fontsize = drag_and_drop_mushra["fontsize"]
         button_fontsize = drag_and_drop_mushra["button_fontsize"]
         fontcolor = drag_and_drop_mushra["fontcolor"]
+        window_background_color = drag_and_drop_mushra["window_background_color"]
 
         self._description = description
         self._fontsize = max(1, int(fontsize))
@@ -339,8 +340,10 @@ class _MainWindow(QWidget):
         self.stop_button = QPushButton("Stop", self)
         self.continue_button = QPushButton("Continue", self)
 
-        self._setup_control_button(self.stop_button, button_fontsize)
-        self._setup_control_button(self.continue_button, button_fontsize)
+        self._setup_control_button(self.stop_button, button_fontsize,
+                                   fontcolor, window_background_color)
+        self._setup_control_button(self.continue_button, button_fontsize,
+                                   fontcolor, window_background_color)
 
         self.stop_button.clicked.connect(self._on_stop_button_clicked)
         self.continue_button.clicked.connect(self.continueClicked)
@@ -370,7 +373,9 @@ class _MainWindow(QWidget):
         self.stopClicked.emit()
 
     @staticmethod
-    def _setup_control_button(button: QPushButton, button_fontsize: int) -> None:
+    def _setup_control_button(
+        button: QPushButton, button_fontsize: int,
+        button_fontcolor: str, button_background_color: str) -> None:
         font_size = max(1, int(button_fontsize))
         font = QFont("Helvetica", font_size, QFont.Weight.Normal)
         button.setFont(font)
@@ -379,6 +384,10 @@ class _MainWindow(QWidget):
         width = hint.width() + max(6, int(font_size * 0.5))
         height = hint.height() + max(4, int(font_size * 0.3))
         button.setFixedSize(width, height)
+        button.setStyleSheet(
+            f"background-color: {button_background_color};"
+            f"color: {button_fontcolor};"
+        )
 
 
 class _RatingArea(QGraphicsView):

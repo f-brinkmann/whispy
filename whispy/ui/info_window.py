@@ -77,6 +77,7 @@ class InfoWindow(_BaseUIWindow):
         *,
         fontsize: int = 12,
         fontcolor: str = "#FFFFFF",
+        window_background_color: str = "#2b2b2b",
         fullscreen: bool = False,
         minimum_width: int=320,
         center: bool = True,
@@ -98,6 +99,9 @@ class InfoWindow(_BaseUIWindow):
                 self.disable_close_button()
 
         self._content_widget = QWidget()
+        self._content_widget.setStyleSheet(
+            f"background-color: {window_background_color};"
+        )
         content_layout = QVBoxLayout(self._content_widget)
         content_layout.setContentsMargins(10, 10, 10, 10)
         content_layout.setSpacing(10)
@@ -126,6 +130,10 @@ class InfoWindow(_BaseUIWindow):
         controls_layout.addStretch(1)
 
         self.continue_button = QPushButton("Continue")
+        self.continue_button.setStyleSheet(
+            f"background-color: {window_background_color};"
+            f"color: {fontcolor};"
+        )
         self._setup_control_button(self.continue_button, self._fontsize)
         self.continue_button.clicked.connect(self._on_continue_clicked)
 

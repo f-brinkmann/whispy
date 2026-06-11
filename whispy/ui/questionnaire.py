@@ -252,6 +252,10 @@ class _QuestionnaireMain(QWidget):
         controls = QHBoxLayout()
         controls.addStretch(1)
         self.continue_button = QPushButton("Continue", self)
+        self.continue_button.setStyleSheet(
+            f"background-color: {ui_cfg['window_background_color']};"
+            f"color: {ui_cfg['fontcolor']};"
+        )
         self.continue_button.clicked.connect(self.continueClicked)
         controls.addWidget(self.continue_button)
         root_layout.addLayout(controls)
