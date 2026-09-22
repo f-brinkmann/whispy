@@ -9,9 +9,6 @@ driven by YAML configuration.
 The tests run in Jupyter notebooks: either run a predefined full experiment
 or compile your own setup from the building blocks. 
 
-> 📑 **Presentation:** for a quick visual introduction to the project, see our
-> final presentation [slide deck (PDF, in German)](docs/AbschlussPraes_PyAk.pdf).
-
 Available predefined test setups:
 
 - ### ABX
@@ -43,7 +40,7 @@ Available predefined test setups:
 Clone the repository to your local machine. Navigate with `cd` to your desired 
 folder and run:
 ```
-git clone https://github.com/tomstrobl/whispy.git
+git clone https://github.com/f-brinkmann/whispy.git
 ```
 Then change into the cloned folder and install the package with all required
 dependencies:
@@ -79,8 +76,7 @@ fullscreen window):
 - `scale_testing` - attribute rating on Likert-button/slider scales.
 
 There are also building blocks for the questionnaire and the framing
-welcome/thank-you screens, and `full_experiment_audience_demo.ipynb`, a
-~7-minute live demo chaining all UI types.
+welcome/thank-you screens.
 
 Each notebook contains step-by-step instructions. Results are saved as CSV
 files into `examples/results/`; the full experiments additionally autosave

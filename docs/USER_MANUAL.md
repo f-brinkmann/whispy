@@ -63,7 +63,7 @@ PowerShell) and run the following commands one by one.
 live, then:
 
 ```bash
-git clone https://github.com/tomstrobl/whispy.git
+git clone https://github.com/f-brinkmann/whispy.git
 cd whispy
 ```
 
