@@ -1,12 +1,7 @@
 from whispy.utils import read_config
 import numpy as np
-import os
 import time
 from typing import Optional, List, Dict
-
-# Directory containing this file.
-# Required for loading the default configs
-FILEPATH = os.path.dirname(os.path.abspath(__file__))
 
 class ExperimentScheduler():
     """
@@ -14,9 +9,11 @@ class ExperimentScheduler():
 
     Parameters
     ----------
-    experiment : str or None, optional
-        Path to the experiment configuration file. If ``None``, the default
-            ``configs/experiment.yml`` from this package is used.
+    experiment : list, dict, or str
+        The experiment definition: a list of blocks, a combined experiment
+        config that nests them under an ``experiment:`` block, or a path to a
+        YAML file containing either. Required (raises ``ValueError`` if
+        ``None``).
     randomize_blocks : bool, optional
         Whether to randomize the order of blocks of the experiment. The default
         is ``True``.
@@ -30,14 +27,14 @@ class ExperimentScheduler():
         Maximum number of conditions to display per GUI screen. The default is
         ``7``.
     random_seed : int, optional
-        Seed for random number generator. If ``None``, the current internet
-        time in seconds ``time.time()`` is used.
+        Seed for random number generator. If ``None``, the current system
+        time in seconds (``time.time()``) is used.
 
-    Returns
-    -------
-    schedule:
-        Experimental schedule class. Contains the schedule in
-        `schedule.schedule` and can be iterated to run the experiment.
+    Attributes
+    ----------
+    schedule : list of dict
+        The generated schedule, one "screen" dict per GUI screen (see
+        ``_course`` for the keys). Iterating the scheduler iterates this list.
 
     Examples
     --------
@@ -45,8 +42,10 @@ class ExperimentScheduler():
 
         import whispy
 
-        # create the scheduler
-        scheduler = whispy.ExperimentScheduler()
+        # create the scheduler from a combined experiment config (it reads the
+        # `experiment:` block)
+        scheduler = whispy.ExperimentScheduler(
+            experiment="configs/drag_and_drop_mushra.yml")
 
         # initalize results
         results = None
@@ -58,7 +57,7 @@ class ExperimentScheduler():
             print(screen)
 
             # run a drag and drop MUSHRA-like experiment
-            mushra_like = whispy.DragAndDropMushra(screen)
+            mushra_like = whispy.ui.DragAndDropMUSHRA(screen=screen)
 
             # update results
             results = mushra_like.get_results(results)
@@ -97,9 +96,11 @@ def _course(
 
     Parameters
     ----------
-    experiment : str or None, optional
-        Path to the experiment configuration file. If ``None``, the default
-            ``configs/experiment.yml`` from this package is used.
+    experiment : list, dict, or str
+        The experiment definition: a list of blocks, a combined experiment
+        config that nests them under an ``experiment:`` block, or a path to a
+        YAML file containing either. Required (raises ``ValueError`` if
+        ``None``).
     randomize_blocks : bool, optional
         Whether to randomize the order of blocks of the experiment. The default
         is ``True``.
@@ -113,23 +114,34 @@ def _course(
         Maximum number of conditions to display per GUI screen. The default is
         ``7``.
     random_seed : int, optional
-        Seed for random number generator. If ``None``, the current internet
-        time in seconds ``time.time()`` is used.
+        Seed for random number generator. If ``None``, the current system
+        time in seconds (``time.time()``) is used.
 
     Returns
     -------
     experimental_course: list of dict
-        Experimental course as a list. Each element contains the keys
-        blocks, sections, references, test conditions, and flags indicating
-        block/section changes.
+        One "screen" dict per GUI screen, with the keys ``block``,
+        ``section``, ``reference``, ``test``, ``block_changed``,
+        ``section_changed``, ``attribute``, ``block_name``, ``section_name``
+        and ``progress`` (``{"current": ..., "total": ...}``, the screen's
+        position in the whole schedule for the trial-progress bar).
     """
 
     # load config
     if experiment is None:
-        experiment = os.path.join(
-                FILEPATH, '..', 'configs', 'experiment.yml')
+        raise ValueError(
+            "ExperimentScheduler needs an experiment: pass experiment=<list of "
+            "blocks>, the combined experiment config that nests them under an "
+            "`experiment:` block, or a path to a YAML file with either.")
 
     experiment = read_config(experiment)
+    # accept either the experiment list directly or a combined experiment
+    # config that nests it under an `experiment:` block
+    if isinstance(experiment, dict):
+        if "experiment" not in experiment:
+            raise ValueError(
+                "experiment config dict has no `experiment:` block")
+        experiment = experiment["experiment"]
 
     # initialize experimental_course
     experimental_course = []
@@ -198,16 +210,24 @@ def _course(
                 t_end = min(n_conditions, t_start + max_conditions_per_gui)
 
                 # append current line of the experiment
+                # `reference` and `attribute` are MUSHRA-specific; sections of
+                # other tests (e.g. scale testing) simply omit them -> None.
                 experimental_course.append(
                     {"block": int(b_idx),
                      "section": int(s_idx),
-                     "reference": section["reference"],
+                     "reference": section.get("reference"),
                      "test": conditions[t_start:t_end],
                      "block_changed": bool(block_changed),
                      "section_changed": bool(section_changed),
-                     "attribute": section["attribute"],
+                     "attribute": section.get("attribute"),
                      "block_name": block_name[0],
-                     "section_name": section["section_name"],}
+                     "section_name": section.get("section_name"),}
                 )
+
+    # attach the position within the whole schedule to every screen, so the
+    # UIs can show a trial-progress bar (`show_progress` in their ui: block)
+    total = len(experimental_course)
+    for position, screen in enumerate(experimental_course, start=1):
+        screen["progress"] = {"current": position, "total": total}
 
     return experimental_course

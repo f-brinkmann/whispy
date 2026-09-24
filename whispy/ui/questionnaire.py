@@ -24,7 +24,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from whispy.utils import read_config
+from whispy.utils import load_design, read_config
 from whispy.utils._utils import format_markdown
 
 from .base import _BaseUIWindow, style_qpushbutton
@@ -46,15 +46,19 @@ class Questionnaire(_BaseUIWindow):
 
     Parameters
     ----------
-    questionnaire : str or None, optional
-        Path to the questionnaire YAML file. If ``None``, the default
-        ``configs/questionnaire.yml`` file is used.
+    questionnaire : str or dict, optional
+        The questionnaire config (its ``ui:`` and ``questionnaire:`` blocks
+        are used) — a YAML path or an already-loaded dict. If ``None``, the
+        default ``configs/questionnaires/questionnaire.yml`` file is used.
     blocking : bool, optional
         If ``True``, block execution until the window is closed.
     debug : bool, optional
         If ``False``, the window close button is disabled and the questionnaire
         can only be closed via Continue after all required answers are
         provided.
+    parent : QMainWindow, optional
+        If provided, reuse that UI's host window instead of opening a new one
+        (the host's central widget is swapped in place).
     """
 
     def __init__(self,
@@ -67,13 +71,16 @@ class Questionnaire(_BaseUIWindow):
 
         if questionnaire is None:
             questionnaire = os.path.join(
-                FILEPATH, "..", "..", "configs", "questionnaire.yml")
+                FILEPATH, "..", "..", "configs", "questionnaires", "questionnaire.yml")
 
         cfg = read_config(questionnaire)
         if not isinstance(cfg, dict):
             raise ValueError("Questionnaire config must be a mapping.")
 
-        self._ui_cfg = cfg.get("ui", {})
+        # The global theme from configs/design.yml is the base; the per-UI
+        # `ui:` block only overrides layout/sizing (and optionally colors).
+        self._ui_cfg = load_design(cfg.get("ui"))
+        self._screen_setting = self._ui_cfg.get("screen")
         self._questionnaire_cfg = cfg.get("questionnaire", [])
         if not isinstance(self._questionnaire_cfg, list):
             raise ValueError("The 'questionnaire' key must be a list.")
@@ -246,23 +253,57 @@ class _QuestionnaireMain(QWidget):
 
         form_layout.addStretch(1)
 
+        self._wire_dependencies()
+
         scroll.setWidget(content)
         root_layout.addWidget(scroll)
 
         controls = QHBoxLayout()
         controls.addStretch(1)
         self.continue_button = QPushButton("Continue", self)
-        style_qpushbutton(self.continue_button, question_font_size,
-                          ui_cfg['fontcolor'], ui_cfg['window_background_color'])
+        style_qpushbutton(
+            self.continue_button, question_font_size,
+            ui_cfg.get("button_text_color", "#2b3550"),
+            ui_cfg.get("button_background_color", "#ffffff"),
+            ui_cfg.get("button_border_radius", "8px"),
+            ui_cfg.get("button_hover_background_color"),
+            ui_cfg.get("button_border_color"),
+        )
         self.continue_button.clicked.connect(self.continueClicked)
         controls.addWidget(self.continue_button)
         root_layout.addLayout(controls)
+
+    def _wire_dependencies(self) -> None:
+        """Show/hide questions that declare a `depends_on` on another answer."""
+        widgets_by_id = {entry.widget.question_id: entry.widget for entry in self._entries}
+
+        for entry in self._entries:
+            depends_on = entry.widget.depends_on
+            if depends_on is None:
+                continue
+
+            controller = widgets_by_id.get(depends_on["question"])
+            if controller is None:
+                # Unknown controller id: leave the question visible.
+                continue
+
+            dependent = entry.widget
+
+            def update(_=None, controller=controller, dependent=dependent, depends_on=depends_on) -> None:
+                satisfied = (
+                    controller.is_active()
+                    and _dependency_satisfied(controller.get_answer(), depends_on["values"])
+                )
+                dependent.set_dependency_active(satisfied)
+
+            controller.answerChanged.connect(update)
+            update()
 
     def get_missing_required_labels(self) -> list[str]:
         missing: list[str] = []
         for entry in self._entries:
             widget = entry.widget
-            if widget.required and not widget.is_answered():
+            if widget.is_active() and widget.required and not widget.is_answered():
                 missing.append(widget.prompt)
         return missing
 
@@ -276,13 +317,17 @@ class _QuestionnaireMain(QWidget):
                     "prompt": entry.widget.prompt,
                     "type": entry.widget.question_type,
                     "required": entry.widget.required,
-                    "answer": entry.widget.get_answer(),
+                    "answer": entry.widget.get_answer() if entry.widget.is_active() else None,
                 }
             )
         return pandas.DataFrame(rows)
 
 
 class _BaseQuestionWidget(QWidget):
+
+    # Emitted whenever the answer changes, so dependent questions can update
+    # their visibility (see `depends_on`).
+    answerChanged = pyqtSignal()
 
     def __init__(
         self,
@@ -300,6 +345,8 @@ class _BaseQuestionWidget(QWidget):
         self.prompt = str(question_cfg.get("prompt", self.question_id))
         self.question_type = str(question_cfg.get("type", ""))
         self.required = bool(question_cfg.get("required", False))
+        self.depends_on = _parse_depends_on(question_cfg.get("depends_on"))
+        self._dependency_active = True
         self._ui_cfg = ui_cfg
         self._font_color = font_color
         self._response_color = response_color
@@ -320,6 +367,20 @@ class _BaseQuestionWidget(QWidget):
         self.input_row.setContentsMargins(10, 0, 0, 0)
         self.input_row.setSpacing(4)
         layout.addLayout(self.input_row)
+
+    def is_active(self) -> bool:
+        """Whether this question is currently shown (its `depends_on` is met)."""
+        return self._dependency_active
+
+    def set_dependency_active(self, active: bool) -> None:
+        """Show/hide this question based on whether its `depends_on` is met."""
+        active = bool(active)
+        if active == self._dependency_active:
+            return
+        self._dependency_active = active
+        self.setVisible(active)
+        # Propagate so questions depending on this one can re-evaluate.
+        self.answerChanged.emit()
 
     def is_answered(self) -> bool:
         raise NotImplementedError
@@ -346,6 +407,7 @@ class _TextQuestionWidget(_BaseQuestionWidget):
             f"background-color: {response_color}; color: {font_color}; border: 1px solid {font_color};"
         )
         self.input.setFixedWidth(_char_width(self.input.font(), int(ui_cfg["width_text_response"])))
+        self.input.textChanged.connect(self.answerChanged)
         self.input_row.addWidget(self.input)
 
     def is_answered(self) -> bool:
@@ -377,6 +439,7 @@ class _TextBoxQuestionWidget(_BaseQuestionWidget):
         lines = max(1, int(ui_cfg["text_box_number_of_lines"]))
         line_height = QFontMetrics(self.input.font()).lineSpacing()
         self.input.setFixedHeight(int(line_height * lines + 16))
+        self.input.textChanged.connect(self.answerChanged)
         self.input_row.addWidget(self.input)
 
     def is_answered(self) -> bool:
@@ -407,6 +470,7 @@ class _NumericQuestionWidget(_BaseQuestionWidget):
         validator.setNotation(QDoubleValidator.Notation.StandardNotation)
         self.input.setValidator(validator)
         self.input.setFixedWidth(_char_width(self.input.font(), int(ui_cfg["width_numeric_response"])))
+        self.input.textChanged.connect(self.answerChanged)
         self.input_row.addWidget(self.input)
 
     def _parse_numeric(self) -> Optional[float]:
@@ -442,6 +506,10 @@ class _SingleChoiceQuestionWidget(_BaseQuestionWidget):
         if not isinstance(options, list):
             options = []
 
+        selected_color = QColor(
+            str(ui_cfg.get("button_selected_background_color", "#5cb874"))
+        ).name()
+
         self._group = QButtonGroup(self)
         self._buttons: list[QRadioButton] = []
         indicator_size = 14
@@ -449,15 +517,17 @@ class _SingleChoiceQuestionWidget(_BaseQuestionWidget):
             text = _as_option_text(option)
             button = QRadioButton(text, self)
             button.setStyleSheet(
-                f"color: {font_color};"
-                f"QRadioButton::indicator {{ background-color: {response_color}; border: 1px solid {font_color}; width: {indicator_size}px; height: {indicator_size}px; }}"
-                f"QRadioButton::indicator:checked {{ background-color: {response_color}; border: 2px solid {font_color}; }}"
+                f"QRadioButton {{ color: {font_color}; }}"
+                f"QRadioButton::indicator {{ background-color: {response_color}; border: 1px solid {font_color}; border-radius: {indicator_size // 2}px; width: {indicator_size}px; height: {indicator_size}px; }}"
+                f"QRadioButton::indicator:checked {{ background-color: {selected_color}; border: 1px solid {font_color}; }}"
             )
             button.setFont(QFont("Helvetica", question_font_size))
             button.setMinimumHeight(max(button.sizeHint().height(), indicator_size + 8))
             self._group.addButton(button, idx)
             self._buttons.append(button)
             self.input_row.addWidget(button)
+
+        self._group.buttonClicked.connect(self.answerChanged)
 
         self._other_cfg = question_cfg.get("other_question", None)
         self._other_widget: Optional[_BaseQuestionWidget] = None
@@ -546,16 +616,22 @@ class _MultipleChoiceQuestionWidget(_BaseQuestionWidget):
         if not isinstance(options, list):
             options = []
 
+        selected_color = QColor(
+            str(ui_cfg.get("button_selected_background_color", "#5cb874"))
+        ).name()
+        indicator_size = 14
+
         self._checks: list[QCheckBox] = []
         for option in options:
             text = _as_option_text(option)
             checkbox = QCheckBox(text, self)
             checkbox.setStyleSheet(
-                f"color: {font_color};"
-                f"QCheckBox::indicator {{ background-color: {response_color}; border: 1px solid {font_color}; }}"
-                f"QCheckBox::indicator:checked {{ background-color: {response_color}; border: 2px solid {font_color}; }}"
+                f"QCheckBox {{ color: {font_color}; }}"
+                f"QCheckBox::indicator {{ background-color: {response_color}; border: 1px solid {font_color}; width: {indicator_size}px; height: {indicator_size}px; }}"
+                f"QCheckBox::indicator:checked {{ background-color: {selected_color}; border: 1px solid {font_color}; }}"
             )
             checkbox.setFont(QFont("Helvetica", question_font_size))
+            checkbox.toggled.connect(self.answerChanged)
             self._checks.append(checkbox)
             self.input_row.addWidget(checkbox)
 
@@ -594,6 +670,42 @@ def _char_width(font: QFont, n_chars: int) -> int:
     metrics = QFontMetrics(font)
     width = metrics.averageCharWidth() * max(1, int(n_chars))
     return max(80, width + 16)
+
+
+def _parse_depends_on(value: Any) -> Optional[dict[str, Any]]:
+    """Normalize a question's `depends_on` config into ``{question, values}``.
+
+    Accepts a mapping with a ``question`` key (the controlling question id) and
+    a ``value`` (single value) or ``values`` (list) the answer must match for
+    this question to be shown. Returns ``None`` when no valid dependency is set.
+    """
+    if not isinstance(value, dict):
+        return None
+
+    question = str(value.get("question", "")).strip()
+    if not question:
+        return None
+
+    raw = value.get("values", value.get("value"))
+    if isinstance(raw, list):
+        values = [_as_option_text(item) for item in raw]
+    elif raw is None:
+        values = []
+    else:
+        values = [_as_option_text(raw)]
+
+    return {"question": question, "values": values}
+
+
+def _dependency_satisfied(answer: Any, expected_values: list[str]) -> bool:
+    """Whether ``answer`` matches one of ``expected_values`` (case-insensitive)."""
+    if not expected_values:
+        return _has_value(answer)
+
+    answers = answer if isinstance(answer, list) else [answer]
+    given = {_as_option_text(a).strip().lower() for a in answers if _has_value(a)}
+    expected = {value.strip().lower() for value in expected_values}
+    return bool(given & expected)
 
 
 def _as_option_text(value: Any) -> str:

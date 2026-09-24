@@ -26,13 +26,18 @@ classifiers = [
 
 dependencies = [
     "ipykernel",
+    "matplotlib>=3.9",
     "pandas",
     "pyfar>=0.8.0",
+    "python-osc",
     "PyQt6",
     "pytest",
     "pyyaml",
     "sounddevice",
 ]
 
-[tool.setuptools]
-packages = ["whispy"]
+[tool.setuptools.packages.find]
+include = ["whispy*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
