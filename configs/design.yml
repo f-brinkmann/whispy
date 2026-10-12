@@ -1,0 +1,129 @@
+# =============================================================================
+# Global design / theme for ALL whispy UIs
+# =============================================================================
+# This file is the single source of truth for how every listening test looks
+# (DragAndDropMUSHRA, NAFC, Questionnaire, InfoWindow). Each UI loads these
+# values via `whispy.utils.load_design()` and may override individual keys in
+# its own config (configs/n_afc.yml, configs/drag_and_drop_mushra.yml,
+# configs/questionnaires/questionnaire.yml). Change a color here and it changes
+# everywhere.
+#
+# Palette: a clean, cool indigo theme on a light slate background.
+
+# ------------------------------- Window ------------------------------------ #
+# Which screen (monitor) every whispy window opens on. All windows of one
+# experiment (participant id, info screens, questionnaires, the test itself)
+# share this, so nothing ends up on a second monitor. Options:
+#   "primary"      -> the OS primary screen (default)
+#   "cursor"       -> the screen currently containing the mouse pointer
+#   0, 1, 2, ...   -> screen index as reported by Qt (0 is usually primary)
+#   "<name>"       -> a screen by name, e.g. "DELL U2720Q" (substring is fine)
+# Invalid or unavailable values silently fall back to the primary screen, so a
+# missing second monitor can never keep an experiment from opening. Can be
+# overridden per UI in its own config's ui: block like any other design key.
+screen: primary
+# Default window size. Either [pixels_x, pixels_y] or "fullscreen".
+window_size: fullscreen
+# Overall surface + text.
+window_background_color: "#eef1f7"   # light cool gray
+fontcolor: "#2b2f38"                 # dark slate (used for body text)
+# Base font size for general text.
+fontsize: 14
+
+# ------------------------------- Buttons ----------------------------------- #
+# Shared button geometry.
+button_size: 44
+button_fontsize: 16
+button_spacing: 12
+button_border_radius: "8px"
+
+# --- Push buttons (Continue / Stop / Submit, N-AFC choices) ---
+# Light, clearly raised look so users recognize them as clickable, with a
+# subtle border and a hover highlight.
+button_background_color: "#ffffff"           # resting (light)
+button_text_color: "#2b3550"                 # dark label
+button_border_color: "#b9c4dd"               # subtle outline
+button_hover_background_color: "#dbe2f1"      # light blue on hover
+button_selected_background_color: "#5cb874"  # selected (N-AFC, green)
+button_selected_text_color: "#ffffff"
+# Disabled state (e.g. the N-AFC submit button before a choice is made).
+button_disabled_background_color: "#eef1f7"
+button_disabled_text_color: "#9aa3b2"
+
+# --- MUSHRA rating tiles (drag-and-drop) ---
+# These stay colored so the draggable handles read as distinct from buttons.
+button_fontcolor: "#ffffff"          # tile label color
+button_color_initial: "#5168a6"      # resting tile (indigo)
+button_color_clicked: "#9db4e8"      # pressed / being dragged (light indigo)
+button_color_active: "#5cb874"       # currently playing (green)
+
+# ------------------------------- Task text --------------------------------- #
+# Prompt shown on top of a rating / N-AFC screen and the gap below it (px).
+# The fontsize scales up with the window height (reference: 600 px) in every
+# test, so it is the size at the reference height, never rendered smaller.
+task_fontsize: 16
+task_spacing: 24
+
+# --------------------------- Shared test layout ----------------------------- #
+# Layout of the listening-test screens (N-AFC, ABX, scale testing; MUSHRA uses
+# content_area_size too). Each test may override any key in its config's ui:
+# block — wording (prompts, hints, button texts) stays in the test configs.
+# Content area (task + controls + submit) as a percentage [x%, y%] of the
+# window, centered.
+content_area_size: [75, 80]
+# Share (0..1) of the free vertical window space placed above the content
+# area: 0 = flush at the top, 0.5 = centered, 1 = at the bottom.
+content_top_share: 0.6
+# The submit button and the fonts of the texts around it.
+submit_button_fontsize: 16
+submit_hint_fontsize: 6      # keyboard hint below the submit button
+# Vertical gap (px) between the submit button and the hint below it. Cannot
+# go below task_spacing (the layout's base spacing).
+submit_hint_spacing: 16
+
+# ------------------------------ Progress bar ------------------------------- #
+# Look of the "Trial X of Y" progress indicator every test can show (each test
+# turns it on/off with `show_progress` in its own ui: block).
+progress_bar_color: "#5cb874"              # filled part (matches the accent)
+progress_bar_background_color: "#dbe2f1"   # unfilled part (trough)
+progress_fontsize: 6                       # the "Trial X of Y" text
+
+# ---------------------------------- ABX ------------------------------------ #
+listen_label_fontsize: 12    # "Listen:" above the A/B/X playback buttons
+answer_label_fontsize: 12    # "Your answer ..." above the A/B answer buttons
+# Extra horizontal gap (px) between the A/B pair and the X playback button,
+# setting the reference X apart visually. Scales with the window height.
+x_button_gap: 32
+
+# --------------------------------- MUSHRA ----------------------------------- #
+tile_fontsize: 16            # numbers on the draggable rating tiles
+
+# ------------------------------ Scale testing ------------------------------- #
+# The stacked rating scales of the ScaleTest UI. (The questionnaires define
+# their own question_fontsize / question_spacing in their configs.)
+question_fontsize: 8         # the question prompts above each scale
+scale_label_fontsize: 8      # endpoint / per-step labels on the scales
+play_button_fontsize: 14     # the play button
+scale_button_size: 30        # side length (px) of one scale button
+question_spacing: 20         # vertical gap (px) between stacked questions
+# Vertical gap (px) between a question's prompt text and its scale below it.
+prompt_scale_spacing: 40
+# Maximum height of the scrollable questions area, as a percentage of the
+# window height; questions taller than that scroll. 100 = no extra cap.
+questions_area_height: 40
+# Alignment of the question prompts: "left" or "center" (scale rows are
+# always centered).
+question_alignment: left
+# Thin horizontal line between the stacked questions; its color defaults to
+# button_border_color (override with question_separator_color).
+show_question_separator: true
+# Vertical gap (px) between the task text and the play button below it.
+# Cannot go below task_spacing.
+play_button_spacing: 100
+
+# --------------------------- Areas & responses ----------------------------- #
+# MUSHRA rating area surface + value-line color.
+rating_area_background_color: "#dbe2f1"
+edge_color: "#6b7280"
+# Questionnaire response fields (text boxes, choice indicators).
+response_boxes_color: "#ffffff"

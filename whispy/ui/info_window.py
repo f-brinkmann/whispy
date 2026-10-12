@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from whispy.utils import load_design
 from whispy.utils._utils import format_markdown
 from .base import _BaseUIWindow, style_qpushbutton
 
@@ -8,7 +9,7 @@ from typing import Optional
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QCloseEvent, QColor, QFont, QTextDocument
-from PyQt6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton, QScrollArea, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton, QScrollArea, QVBoxLayout, QWidget
 
 # Module-level registry of top-level InfoWindows that are not stored by the user.
 # This keeps them alive so they don't get garbage collected before the user closes them.
@@ -52,9 +53,12 @@ class InfoWindow(_BaseUIWindow):
         Font size for the text and button.
     fontcolor : str, optional
         Text color.
+    background_color : str, optional
+        Window background color. Like ``fontsize``/``fontcolor`` it falls
+        back to the global theme (``configs/design.yml``).
     fullscreen : bool, optional
-        If ``True``, show the window fullscreen using the primary screen
-        geometry.
+        If ``True``, show the window fullscreen on the target screen (the
+        ``screen:`` setting of ``configs/design.yml``).
     minimum_width : int, optional
         Minimum width for the content block in pixel.
     center : bool, optional
@@ -75,9 +79,9 @@ class InfoWindow(_BaseUIWindow):
         self,
         info_text: str,
         *,
-        fontsize: int = 12,
-        fontcolor: str = "#FFFFFF",
-        background_color: str = "#2b2b2b",
+        fontsize: Optional[int] = None,
+        fontcolor: Optional[str] = None,
+        background_color: Optional[str] = None,
         fullscreen: bool = False,
         minimum_width: int=320,
         center: bool = True,
@@ -86,6 +90,17 @@ class InfoWindow(_BaseUIWindow):
         parent: Optional[QMainWindow] = None,
     ) -> None:
         super().__init__(blocking=blocking, debug=debug, parent=parent)
+
+        # Fall back to the global theme so standalone info screens match the
+        # other listening-test UIs. Explicit args still win.
+        design = load_design()
+        if fontsize is None:
+            fontsize = int(design.get("fontsize", 12))
+        if fontcolor is None:
+            fontcolor = str(design.get("fontcolor", "#FFFFFF"))
+        if background_color is None:
+            background_color = str(design.get("window_background_color", "#2b2b2b"))
+        self._screen_setting = design.get("screen")
         self._fullscreen = fullscreen
         self._center = center
         self._fontsize = max(1, int(fontsize))
@@ -130,8 +145,14 @@ class InfoWindow(_BaseUIWindow):
         controls_layout.addStretch(1)
 
         self.continue_button = QPushButton("Continue")
-        style_qpushbutton(self.continue_button, fontsize,
-                          fontcolor, background_color)
+        style_qpushbutton(
+            self.continue_button, fontsize,
+            design.get("button_text_color", "#2b3550"),
+            design.get("button_background_color", "#ffffff"),
+            design.get("button_border_radius", "8px"),
+            design.get("button_hover_background_color"),
+            design.get("button_border_color"),
+        )
         self.continue_button.clicked.connect(self._on_continue_clicked)
 
         controls_layout.addWidget(self.continue_button)
@@ -158,7 +179,7 @@ class InfoWindow(_BaseUIWindow):
 
         if parent is None:
             if self._fullscreen:
-                width, height = self._primary_screen_size()
+                width, height = self._target_screen_size()
                 self._show_host_window(
                     width=width, height=height, fullscreen=True,
                     background_color=background_color)
@@ -172,7 +193,7 @@ class InfoWindow(_BaseUIWindow):
             self.wait_until_closed()
 
     def _resize_to_content(self) -> None:
-        screen_geometry = QApplication.primaryScreen().availableGeometry()
+        screen_geometry = self._target_screen().availableGeometry()
         max_width = max(self._minimum_width, math.floor(screen_geometry.width() * _SCREEN_MARGIN_FACTOR))
         max_height = max(30, math.floor(screen_geometry.height() * _SCREEN_MARGIN_FACTOR))
 
@@ -209,10 +230,10 @@ class InfoWindow(_BaseUIWindow):
             self._host.adjustSize()
 
     def _center_on_screen(self) -> None:
-        frame_geometry = self._host.frameGeometry()
-        screen_center = QApplication.primaryScreen().availableGeometry().center()
-        frame_geometry.moveCenter(screen_center)
-        self._host.move(frame_geometry.topLeft())
+        # Re-center with the now-accurate frame geometry, staying on the
+        # target screen (a popup shown over a running test stays on the
+        # test's screen, see _BaseUIWindow._target_screen()).
+        self._move_host_to_screen(self._target_screen())
 
     def _measure_markdown(self, markdown_text: str) -> tuple[int, int]:
         doc = QTextDocument()
@@ -228,12 +249,15 @@ class InfoWindow(_BaseUIWindow):
         return max(1, text_width), max(1, text_height)
 
     def _on_continue_clicked(self) -> None:
-        # Non-blocking standalone transient popup: auto-close the window.
-        if not self._blocking and self._host is self:
+        # Standalone popup (owns its window): close it on Continue so it does
+        # not linger. closeEvent also quits any blocking loop, so a blocking
+        # caller still returns after the participant clicks Continue.
+        if self._host is self:
             self._allow_close = True
             QMainWindow.close(self)
             return
-        # Blocking / reused-host: just unblock the caller; window stays open.
+        # Reused host: just unblock the caller; the shared window stays open and
+        # is managed by whoever owns the host.
         self.unblock()
 
     def closeEvent(self, event: QCloseEvent) -> None:

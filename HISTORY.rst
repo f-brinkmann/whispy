@@ -3,6 +3,11 @@ History
 =======
 
 
+0.2.0 (unreleased)
+------------------
+
+Adds N-AFC (with an adaptive staircase), ABX and rating-scale tests, one shared experiment window, and the tooling to run complete experiments from consent to results. Developed as part of the "Python und Akustik SoSe 2026" course at TU Berlin.
+
 0.1.0 (2026-09-22)
 ------------------
 

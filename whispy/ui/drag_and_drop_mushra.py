@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-from .base import _BaseUIWindow, style_qpushbutton
+from .base import _BaseUIWindow, build_progress_widget, style_qpushbutton
 from .info_window import InfoWindow
 from whispy.interfaces import StimuliHandler, SoundDevice
-from whispy.utils import read_config
+from whispy.utils import load_design, read_config
 from whispy.utils._utils import format_markdown
 
+import time
 import pandas
 import os
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QEvent, QPointF, QRectF, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor, QFont, QPainter, QPen
 from PyQt6.QtWidgets import (
     QApplication,
@@ -32,6 +33,45 @@ from PyQt6.QtWidgets import (
 FILEPATH = os.path.dirname(os.path.abspath(__file__))
 
 class DragAndDropMUSHRA(_BaseUIWindow):
+    """MUSHRA-like rating UI with drag-and-drop tiles.
+
+    The participant drags one numbered tile per test stimulus onto a
+    horizontal rating scale (defined by the ``attributes:`` block of the
+    experiment config, keyed by ``screen["attribute"]``); pressing a tile
+    plays its stimulus. An optional reference is played via the dedicated
+    Reference button / the 'R' key. Continue is blocked until every tile has
+    been listened to at least once and placed on the scale.
+
+    Parameters
+    ----------
+    screen : dict, optional
+        Rating-screen description as yielded by
+        :class:`whispy.ExperimentScheduler`: ``reference``, ``test`` (list of
+        stimulus ids), ``attribute`` and metadata (``block``, ``section``,
+        ``block_name``, ``section_name``, ``progress``). If not provided a
+        minimal default is used for quick testing.
+    stimuli_handler : StimuliHandler, optional
+        Handler used to play stimuli. If ``None``, ``SoundDevice()`` is used.
+    attributes : str or dict, optional
+        Rating-scale definitions (attribute name -> ``{task, description,
+        values, labels, neutral_value}``), as a path or dict. Overrides the
+        ``attributes:`` block of ``drag_and_drop_mushra``; required if that
+        config has none.
+    drag_and_drop_mushra : str or dict, optional
+        The experiment config — either a combined config (its ``ui:`` and
+        ``attributes:`` blocks are extracted) or a flat UI config. Path or
+        already-loaded dict. If ``None``, ``configs/drag_and_drop_mushra.yml``
+        from the package is used. Colors/fonts fall back to
+        ``configs/design.yml``.
+    blocking : bool, optional
+        If ``True``, block until the screen is completed (Continue clicked).
+    debug : bool, optional
+        If ``True``, the window close button is enabled, debug prints are
+        emitted and the listen/placement gates are relaxed.
+    parent : QMainWindow, optional
+        If provided, reuse that UI's host window instead of opening a new one
+        (keeps a running experiment in the same window across screens).
+    """
 
     def __init__(
         self,
@@ -61,6 +101,7 @@ class DragAndDropMUSHRA(_BaseUIWindow):
                 "section_name": "Section 1"}
 
         self.screen = screen
+        self._key_filter_installed = False
 
         # initialize default audio handler if it was not passed
         if stimuli_handler is None:
@@ -68,19 +109,39 @@ class DragAndDropMUSHRA(_BaseUIWindow):
 
         self.stimuli_handler: StimuliHandler = stimuli_handler
 
-        # initialize attributes if they were not passed
-        if attributes is None:
-            attributes = os.path.join(
-                FILEPATH, "..", "..", "configs", "attributes.yml")
-
-        attributes = read_config(attributes)
-
-        # read GUI config (use default if not provided)
+        # read the experiment config (use default if not provided). The global
+        # theme from configs/design.yml is the base; the per-UI config only
+        # overrides layout/behavior (and optionally individual theme keys).
         if drag_and_drop_mushra is None:
             drag_and_drop_mushra = os.path.join(
                 FILEPATH, "..", "..", "configs", "drag_and_drop_mushra.yml")
 
-        drag_and_drop_mushra = read_config(drag_and_drop_mushra)
+        # A single self-contained experiment config nests everything under
+        # named blocks (`ui:`, `attributes:`, `SoundDevice:`, `experiment:`);
+        # this UI consumes the `ui:` block for layout and the `attributes:`
+        # block for the rating scales. A flat UI config (no `ui:` block) is
+        # also accepted, in which case the scales must come from `attributes`.
+        if not isinstance(drag_and_drop_mushra, dict):
+            drag_and_drop_mushra = read_config(drag_and_drop_mushra)
+        combined = drag_and_drop_mushra if isinstance(drag_and_drop_mushra, dict) else {}
+
+        # rating-scale definitions: an explicit `attributes` argument wins,
+        # otherwise fall back to the combined config's `attributes:` block.
+        if attributes is None:
+            attributes = combined.get("attributes")
+        if attributes is None:
+            raise ValueError(
+                "No rating-scale attributes found: pass `attributes=` or "
+                "include an `attributes:` block in the `drag_and_drop_mushra` "
+                "config.")
+        attributes = read_config(attributes)
+
+        # UI layout/theme: the `ui:` block of a combined config if present,
+        # otherwise treat the whole dict as a flat UI config.
+        if isinstance(combined.get("ui"), dict):
+            drag_and_drop_mushra = combined["ui"]
+        drag_and_drop_mushra = load_design(drag_and_drop_mushra)
+        self._screen_setting = drag_and_drop_mushra.get("screen")
 
         # parse config data to get parameters for current task ----------------
         # current attribute and rating scale
@@ -93,6 +154,7 @@ class DragAndDropMUSHRA(_BaseUIWindow):
         # number of conditions
         num_buttons = len(screen["test"])
         reference = screen["reference"] is not None
+        self._has_reference = reference
 
         # initialize QT parameters --------------------------------------------
         # set global parameters
@@ -130,6 +192,7 @@ class DragAndDropMUSHRA(_BaseUIWindow):
             values=values,
             labels=labels,
             drag_and_drop_mushra=drag_and_drop_mushra,
+            progress=screen.get("progress"),
             parent=container,
         )
         layout.addWidget(self.drag_area)
@@ -142,6 +205,7 @@ class DragAndDropMUSHRA(_BaseUIWindow):
         self.drag_area.tileActivated.connect(self._on_tile_activated)
         self.drag_area.tileDeactivated.connect(self._on_tile_deactivated)
         self.drag_area.stopClicked.connect(self._on_stop_clicked)
+        self.drag_area.referenceClicked.connect(self._on_reference_clicked)
 
         if parent is None:
             # show window in front of all other windows
@@ -152,6 +216,16 @@ class DragAndDropMUSHRA(_BaseUIWindow):
             )
 
         self.drag_area.continueClicked.connect(self._on_continue_clicked)
+
+        # Route the 'R' key to play the reference on demand (only when this
+        # screen has a reference). An app-level event filter is used so the key
+        # works regardless of focus and across the shared host reused for
+        # successive screens — mirrors the N-AFC keyboard handling.
+        if reference:
+            self._install_key_handling()
+
+        self._start_time = time.time()  # record the start time for reaction time measurement
+
         # Block code execution outside this class until Continue is clicked
         if blocking:
             self.wait_until_closed()
@@ -184,6 +258,58 @@ class DragAndDropMUSHRA(_BaseUIWindow):
         if self._debug:
             print("Stop clicked")
 
+    def _on_reference_clicked(self) -> None:
+        """Play the reference stimulus on demand (Reference button / 'R' key)."""
+        self.drag_area.view.play_reference()
+        if self._debug:
+            print("Reference requested")
+
+    # --------------------------------------------------------------- keyboard
+    def _install_key_handling(self) -> None:
+        """Route key presses to this screen via an app-level event filter.
+
+        A staircase/experiment reuses one host window across screens, so an
+        application filter (rather than overriding ``keyPressEvent``) ensures
+        the key reaches the current screen no matter which widget has focus.
+        Removed again when the screen ends.
+        """
+        app = QApplication.instance()
+        if app is not None and not self._key_filter_installed:
+            app.installEventFilter(self)
+            self._key_filter_installed = True
+
+    def _remove_key_handling(self) -> None:
+        """Stop intercepting key presses for this screen (idempotent)."""
+        app = QApplication.instance()
+        if app is not None and self._key_filter_installed:
+            app.removeEventFilter(self)
+        self._key_filter_installed = False
+
+    def eventFilter(self, obj: Any, event: QEvent) -> bool:  # type: ignore[override]
+        """Handle the 'R' shortcut; defer everything else to Qt."""
+        if event.type() == QEvent.Type.KeyPress and self._handle_key_press(event):
+            return True
+        return super().eventFilter(obj, event)
+
+    def _handle_key_press(self, event: QEvent) -> bool:
+        """Play the reference on 'R'; return ``True`` when the key is consumed."""
+        if self._has_reference and event.key() == Qt.Key.Key_R:
+            self._on_reference_clicked()
+            return True
+        return False
+
+    def unblock(self) -> None:  # type: ignore[override]
+        """Stop playback and key handling for this screen, then release the loop."""
+        self._stop_stimuli_playback()
+        self._remove_key_handling()
+        super().unblock()
+
+    def closeEvent(self, event: Any) -> None:  # type: ignore[override]
+        """Ensure the key filter is removed when the window actually closes."""
+        if self._allow_close:
+            self._remove_key_handling()
+        super().closeEvent(event)
+
     def _get_stimulus_name(self, tile_name):
         if tile_name == "R":
             stimulus_name = self.screen["reference"]
@@ -196,6 +322,8 @@ class DragAndDropMUSHRA(_BaseUIWindow):
         if self.drag_area.view.all_tiles_activated_once() or self._debug:
 
             self.drag_area.view.deactivate_active_button()
+
+            self._rt = time.time() - self._start_time
 
             # Quit the blocking loop so the caller regains control.
             # The window stays open; caller must call .close() explicitly.
@@ -212,8 +340,15 @@ class DragAndDropMUSHRA(_BaseUIWindow):
     def get_results(
             self,
             results: Optional[pandas.DataFrame] = None
-            ) -> Dict[str, Dict[str, float | bool]]:
+            ) -> pandas.DataFrame:
+        """Return the ratings in long form (one row per test stimulus).
 
+        Each row combines the screen metadata (all ``screen`` keys except
+        ``progress``) with a ``test`` (stimulus id) and a ``rating`` column;
+        ratings are decoded from tile position back into the attribute's
+        value scale. Pass the running DataFrame back in to accumulate results
+        across screens.
+        """
         # ratings coded by the names of the GUI buttons/tiles
         ratings_raw = self.drag_area.view.get_values()
         # decode to stimulus names
@@ -222,16 +357,21 @@ class DragAndDropMUSHRA(_BaseUIWindow):
             ratings[self._get_stimulus_name(tile_name)] = rating
 
 
+        # screen metadata without the `progress` entry (UI-only info injected
+        # by the scheduler; it would otherwise end up as a results column)
+        screen_meta = {k: v for k, v in self.screen.items() if k != "progress"}
+
         if results is None:
             # create empty dataframe with columns from the screen metadata
             results = pandas.DataFrame(
-                columns=list(self.screen.keys()) + ['rating'])
+                columns=list(screen_meta.keys()) + ['rating'] + ['rt'])
 
         # fill data frame in long format (one row per test condition)
         for t in self.screen["test"]:
-            row = dict(self.screen)
+            row = dict(screen_meta)
             row["test"] = t
             row["rating"] = ratings[t]
+            row["rt"] = self._rt
             results.loc[len(results)] = row
 
         return results
@@ -244,6 +384,7 @@ class _MainWindow(QWidget):
     tileDeactivated = pyqtSignal(str)
     stopClicked = pyqtSignal()
     continueClicked = pyqtSignal()
+    referenceClicked = pyqtSignal()
 
     def __init__(
         self,
@@ -255,6 +396,7 @@ class _MainWindow(QWidget):
         values: Optional[List[float]] = None,
         labels: Optional[List[Optional[str]]] = None,
         drag_and_drop_mushra: Optional[Dict] = None,
+        progress: Optional[object] = None,
         parent: Optional[QWidget] = None,
     ) -> None:
         super().__init__(parent)
@@ -263,10 +405,25 @@ class _MainWindow(QWidget):
 
         task_fontsize = drag_and_drop_mushra["task_fontsize"]
         task_spacing = drag_and_drop_mushra["task_spacing"]
+        # Scale the task prompt with the window height like the other tests
+        # (1.0 at the 600 px reference height, never below the configured
+        # size). `window_size` is already resolved to pixels at this point.
+        try:
+            window_height = float(drag_and_drop_mushra["window_size"][1])
+        except (KeyError, TypeError, ValueError, IndexError):
+            window_height = 600.0
+        scale = max(1.0, window_height / 600.0)
+        task_fontsize = max(1, round(int(task_fontsize) * scale))
         fontsize = drag_and_drop_mushra["fontsize"]
         button_fontsize = drag_and_drop_mushra["button_fontsize"]
         fontcolor = drag_and_drop_mushra["fontcolor"]
         window_background_color = drag_and_drop_mushra["window_background_color"]
+        # Control-button look (Stop / Continue): light, bordered, hover.
+        button_bg = drag_and_drop_mushra.get("button_background_color", "#ffffff")
+        button_fg = drag_and_drop_mushra.get("button_text_color", "#2b3550")
+        button_border_color = drag_and_drop_mushra.get("button_border_color")
+        button_hover_bg = drag_and_drop_mushra.get("button_hover_background_color")
+        button_radius = drag_and_drop_mushra.get("button_border_radius", "8px")
 
         self._description = description
         self._fontsize = max(1, int(fontsize))
@@ -288,7 +445,7 @@ class _MainWindow(QWidget):
         self.task_label.setWordWrap(True)
         self.task_label.setTextFormat(Qt.TextFormat.MarkdownText)
         self.task_label.setStyleSheet(
-            f"color: {fontcolor}; font-size: {max(1, int(task_fontsize))}pt;"
+            f"color: {fontcolor}; font-size: {task_fontsize}pt;"
         )
 
         self.info_button = QPushButton("ℹ️", self)
@@ -337,13 +494,25 @@ class _MainWindow(QWidget):
         controls_layout.setSpacing(8)
         controls_layout.addStretch(1)
 
+        # Dedicated reference button (with the 'R' keyboard shortcut), so the
+        # reference is played explicitly on demand instead of auto-playing.
+        if reference:
+            self.reference_button = QPushButton("Reference (R)", self)
+            style_qpushbutton(self.reference_button, button_fontsize,
+                              button_fg, button_bg, button_radius,
+                              button_hover_bg, button_border_color)
+            self.reference_button.clicked.connect(self.referenceClicked)
+            controls_layout.addWidget(self.reference_button)
+
         self.stop_button = QPushButton("Stop", self)
         self.continue_button = QPushButton("Continue", self)
 
         style_qpushbutton(self.stop_button, button_fontsize,
-                          fontcolor, window_background_color)
+                          button_fg, button_bg, button_radius,
+                          button_hover_bg, button_border_color)
         style_qpushbutton(self.continue_button, button_fontsize,
-                          fontcolor, window_background_color)
+                          button_fg, button_bg, button_radius,
+                          button_hover_bg, button_border_color)
 
         self.stop_button.clicked.connect(self._on_stop_button_clicked)
         self.continue_button.clicked.connect(self.continueClicked)
@@ -352,6 +521,31 @@ class _MainWindow(QWidget):
         controls_layout.addWidget(self.continue_button)
         controls_widget.setFixedWidth(self.view.minimumWidth())
         layout.addWidget(controls_widget, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+        # trial progress ("Trial X of Y") below the controls, when enabled in
+        # the config AND the screen carries progress info (injected by
+        # ExperimentScheduler). Same keys and widget as N-AFC/ABX.
+        if bool(drag_and_drop_mushra.get("show_progress", False)):
+            progress_widget = build_progress_widget(
+                progress,
+                text_template=str(drag_and_drop_mushra.get(
+                    "progress_text", "Trial {current} of {total}")),
+                fontsize=max(1, int(drag_and_drop_mushra.get(
+                    "progress_fontsize") or fontsize)),
+                fontcolor=fontcolor,
+                bar_color=str(drag_and_drop_mushra.get(
+                    "progress_bar_color", "#5cb874")),
+                trough_color=str(drag_and_drop_mushra.get(
+                    "progress_bar_background_color", "#dbe2f1")),
+                parent=self,
+            )
+            if progress_widget is not None:
+                progress_widget.setFixedWidth(
+                    min(300, self.view.minimumWidth()))
+                layout.addSpacing(10)
+                layout.addWidget(
+                    progress_widget, alignment=Qt.AlignmentFlag.AlignHCenter)
+
         layout.addStretch(1)
 
         self.view.tilePressed.connect(self.tilePressed)
@@ -397,7 +591,10 @@ class _RatingArea(QGraphicsView):
             raise ValueError("drag_and_drop_mushra config is required")
 
         button_size = drag_and_drop_mushra["button_size"]
-        button_fontsize = drag_and_drop_mushra["button_fontsize"]
+        # The draggable tiles have their own font-size key; it falls back to
+        # button_fontsize (which styles the Reference/Stop/Continue buttons).
+        tile_fontsize = (drag_and_drop_mushra.get("tile_fontsize")
+                         or drag_and_drop_mushra["button_fontsize"])
         button_spacing = drag_and_drop_mushra["button_spacing"]
         rating_area_background_color = drag_and_drop_mushra["rating_area_background_color"]
         window_background_color = drag_and_drop_mushra["window_background_color"]
@@ -409,12 +606,12 @@ class _RatingArea(QGraphicsView):
         autoplay_reference = drag_and_drop_mushra["autoplay_reference"]
         autoplay_delay = drag_and_drop_mushra["autoplay_delay"]
         window_size = drag_and_drop_mushra["window_size"]
-        rating_area_size = drag_and_drop_mushra["rating_area_size"]
+        content_area_size = drag_and_drop_mushra["content_area_size"]
 
         self._num_buttons = max(1, num_buttons)
         self._reference = bool(reference)
         self._button_size = max(8.0, float(button_size))
-        self._button_fontsize = max(1, int(button_fontsize))
+        self._button_fontsize = max(1, int(tile_fontsize))
         self._button_spacing = max(0.0, float(button_spacing))
         self._rating_area_background_color = rating_area_background_color
         self._window_background_color = window_background_color
@@ -461,17 +658,17 @@ class _RatingArea(QGraphicsView):
 
         self._button_area_width: float = 0.0
 
-        # Apply rating_area_size as a percentage of the window dimensions.
+        # Apply content_area_size as a percentage of the window dimensions.
         # Width  bounds: [200 px, window_width  - 44 px (container margins)]
         # Height bounds: [80 px,  window_height - 200 px (margins + other widgets)]
-        _win_w = int(window_size[0])
-        _win_h = int(window_size[1])
-        _min_w, _max_w = 200, max(200, _win_w - 44)
-        _min_h, _max_h = 80,  max(80,  _win_h - 200)
-        _x_pct = max(0.0, min(100.0, float(rating_area_size[0]))) / 100.0
-        _y_pct = max(0.0, min(100.0, float(rating_area_size[1]))) / 100.0
-        self.setFixedWidth( max(_min_w, min(_max_w, int(_win_w * _x_pct))))
-        self.setFixedHeight(max(_min_h, min(_max_h, int(_win_h * _y_pct))))
+        _area_w, _area_h = _BaseUIWindow._resolve_area_size(
+            (int(window_size[0]), int(window_size[1])),
+            content_area_size,
+            min_size=(200, 80),
+            reserved=(44, 200),
+        )
+        self.setFixedWidth(_area_w)
+        self.setFixedHeight(_area_h)
 
         self._sync_scene_to_viewport()
         self._build_tiles()
@@ -625,6 +822,19 @@ class _RatingArea(QGraphicsView):
     def deactivate_active_button(self) -> None:
         self._autoplay_timer.stop()
         self._set_active_tile(None, allow_reference_fallback=False)
+
+    def play_reference(self) -> None:
+        """Play the reference on demand: activate the reference tile (which
+        emits ``tileActivated`` -> playback) and cancel any pending autoplay.
+        No-op when this screen has no reference."""
+        if not self._reference:
+            return
+        self._autoplay_timer.stop()
+        # If the reference is already the active tile, deactivate it first so
+        # the button / 'R' key always (re)starts playback from the beginning.
+        if self._active_tile_name == self._neutral_tile_name:
+            self._set_active_tile(None, allow_reference_fallback=False)
+        self._set_active_tile(self._neutral_tile_name, allow_reference_fallback=False)
 
     def all_tiles_activated_once(self) -> bool:
         return set(self._tiles.keys()).issubset(self._activated_once)

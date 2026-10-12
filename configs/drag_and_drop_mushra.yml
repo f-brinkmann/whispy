@@ -1,41 +1,140 @@
-# ---------------------------------- Look ----------------------------------- #
-# Window size. Either [pixels_x, pixels_y] or "fullscreen"
-window_size: fullscreen
+# =============================================================================
+# Drag-and-drop MUSHRA experiment — single configuration file
+# =============================================================================
+# This one file configures the WHOLE drag-and-drop MUSHRA experiment. The only
+# thing configured elsewhere is the shared look of the UIs (configs/design.yml).
+#
+# It is read by four consumers, each picking out the keys it needs:
+#   - the stimuli handler   -> `SoundDevice:` or `OSCHandler:`, picked by `output:`
+#   - DragAndDropMUSHRA     -> the `ui:` block (window size, area size, autoplay)
+#   - DragAndDropMUSHRA     -> the `attributes:` block (the rating scales)
+#   - ExperimentScheduler   -> the `experiment:` block (blocks/sections/order)
+#
+# Edit the values below to design your own experiment; you should not need to
+# touch any Python.
 
-# Rating area size.
-# Percentage with respect to window size.
-# Use 100% for maximally possible size.
-rating_area_size: [75, 50]
+# --------------------------- Output backend --------------------------------- #
+# Which stimuli handler `build_stimuli_handler()` builds: "sounddevice" (play
+# the WAVs below) or "osc" (send an OSC message per stimulus instead - see
+# OSCHandler: below). Switching is just this one key; the MUSHRA window code
+# stays the same either way.
+output: sounddevice
 
-# overall color theme
-fontcolor: "#e8eaed"
-window_background_color: "#2b2b2b"
-rating_area_background_color: "#f6f7f9"
-edge_color: "#454545"
+# ------------------------------- Stimuli ----------------------------------- #
+# Map each stimulus id to a WAV file (files live in the `stimuli_dir` passed in
+# the notebook). All files must share one sampling rate and must not clip.
+# Ids can be numbers or names; they are saved into the results, so prefer
+# descriptive names for a real experiment. Used when `output: sounddevice`.
+SoundDevice:
+  1: { file: stimulus_1.wav }
+  2: { file: stimulus_2.wav }
+  3: { file: stimulus_3.wav }
+  4: { file: stimulus_4.wav }
 
-# color theme for the rating buttons
-button_color_initial: "#ffffff"
-button_color_clicked: "#d9dde3"
-button_color_active: "#a5d6a7"
-button_fontcolor: "#2b2b2b"
+# Used when `output: osc` instead: one OSC message per stimulus id (sent via
+# UDP, no server/receiving side). `args` is optional. `stop_address` is sent
+# on `.stop()` (e.g. when a tile is released/deactivated).
+OSCHandler:
+  ip: "127.0.0.1"
+  port: 9000
+  stop_address: "/whispy/mushra/stop"
+  stimuli:
+    1: { address: "/whispy/mushra/1" }
+    2: { address: "/whispy/mushra/2" }
+    3: { address: "/whispy/mushra/3" }
+    4: { address: "/whispy/mushra/4" }
 
-# look of rating buttons
-button_size: 40
-button_fontsize: 16
-button_spacing: 8
+# ----------------------------- MUSHRA window ------------------------------- #
+# `ui` is read by the DragAndDropMUSHRA window. Colors/fonts come from
+# design.yml; anything you set here overrides that global theme.
+ui:
+  # The look (window size, fonts, tile fontsize, ...) lives in
+  # configs/design.yml; add any design key here to override it for this
+  # experiment only. This block keeps the wording/behavior plus two
+  # per-experiment layout overrides.
+  # Rating area size as a percentage [x%, y%] of the window, centered
+  # (design.yml default: [75, 80]).
+  content_area_size: [75, 50]
+  progress_fontsize: 11          # "Screen X of Y" text (design.yml: 6)
+  # task_fontsize: 16            # rating prompt on top (design.yml: 16)
+  # By default the reference is played explicitly via the dedicated
+  # "Reference (R)" button / the 'R' key, not automatically. Set
+  # `autoplay_reference: true` to instead auto-play it after a test condition
+  # is released; `autoplay_delay` is the delay (in seconds) before that autoplay.
+  autoplay_reference: false
+  autoplay_delay: 0.1
+  # Trial progress bar ("Screen X of Y") below the Stop/Continue buttons, so
+  # the participant knows how many rating screens are left. The text may use
+  # {current}, {total} and {remaining}; its look comes from design.yml
+  # (progress_bar_color / progress_bar_background_color / progress_fontsize).
+  show_progress: true
+  progress_text: "Screen {current} of {total}"
 
-# The task is a string displayed on top of the GUI
-# This defines the fontsize and the space between
-# the task and the rating interface in pixel
-task_fontsize: 16
-task_spacing: 24
+# ------------------------------ Attributes --------------------------------- #
+# Each attribute is one rating scale. The `experiment:` sections below pick an
+# attribute by name; its `task` is shown on top of the rating screen and its
+# `values`/`labels` define the scale the tiles are dragged along.
+#   task         : prompt shown on top (markdown; the **bold** part is the name)
+#   description  : extra info shown via the ℹ️ button
+#   values       : the numeric scale the rating is decoded to
+#   labels       : tick labels (use null/~ for unlabeled ticks)
+#   neutral_value: the value origin of the scale
+attributes:
+  difference:
+    task: |
+      Rate the
+      **Difference**
+    description: Existence of a noticeable difference.
+    labels: [none, null, null, null, very large]
+    values: [0, .25, .5, .75, 1]
+    neutral_value: 0
 
-# Size for all other text
-fontsize: 12
+  tone_color_bright-dark:
+    task: |
+      Rate the
+      **Tone color bright-dark**
+    description: Timbral impression which is determined by the ratio of high to low frequency components
+    labels: [darker, null, null, null, brighter]
+    values: [-1, -.5, 0, .5, 1]
+    neutral_value: 0
 
-# -------------------------------- Behaviour -------------------------------- #
-# Specify if the reference should be played
-# automatically, after the test conditions
-# and the delay of the auto play in seconds
-autoplay_reference: True
-autoplay_delay: .1
+# ------------------------------ Experiment --------------------------------- #
+# The course of the experiment. It is a list of `block`s; each block holds an
+# optional `block_name` and one or more `section`s. The ExperimentScheduler
+# randomizes the order (blocks, sections, and the test conditions within a
+# section) and yields one rating screen at a time.
+#   section_name : label saved into the results
+#   attribute    : must match a key under `attributes:` above
+#   reference    : the reference stimulus id (must be defined under SoundDevice:)
+#   test         : the stimulus ids to rate against the reference
+experiment:
+  - block:
+      - block_name: Block 1
+      - section:
+          section_name: Section 1
+          attribute: difference
+          reference: 1
+          test: [2, 3]
+      - section:
+          section_name: Section 2
+          attribute: difference
+          reference: 1
+          test: [2, 3]
+      - section:
+          section_name: Section 3
+          attribute: difference
+          reference: 1
+          test: [2, 3]
+
+  - block:
+      - block_name: Block 2
+      - section:
+          section_name: Section 4
+          attribute: tone_color_bright-dark
+          reference: 1
+          test: [2, 3]
+      - section:
+          section_name: Section 5
+          attribute: tone_color_bright-dark
+          reference: 1
+          test: [2, 3]
